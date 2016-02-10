@@ -1,0 +1,14 @@
+Main sequence turn off at 1.5 mag E(g-r) and 8.5 kpc:
+absolute magnitude ~ 4.5, color 0, reddening vector:  5.9, 4.4, 3.3, 2.6, 2.1 (PS1 grizy, Schlafly+16) =>
+grizy limiting magnitudes: 25, 23.5, 22.4, 21.7, 21.2
+DECam ETC => achieved in 310, 45, 30, 25, 85 s in grizy, gr in new moon, izY in full moon.  This implies:
+3x100 s exposures in g band, 3x30 in r in new moon
+3x30 s in izY in full moon
++30 sec overhead per exposure => 190 s / pointing in gr, 180 s/pointing in izY, close to balanced.
+=> we need 370 s / pointing (roughly, ignoring large slews)
+=> optimistic, we have 9 hours/night, 8 nights => 720 pointings.
+|b| < 4 => 567 pointings
+|b| < 5 => 708 pointings
+
+initially spec out |b| < 4, that's well suited to typical weather loss; easy to expand to more |b| if the weather looks good!
+
