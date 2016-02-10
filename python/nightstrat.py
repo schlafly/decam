@@ -223,8 +223,8 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
         
     if lbbounds is not None:
         lt, bt = equgal(tiles['RA'], tiles['DEC'])
-        I = (I & (lt > lbbounds[0]) & (lt <= rdbounds[1]) &
-             (bt > rdbounds[2]) & (bt <= rdbounds[3]))
+        I = (I & (lt > lbbounds[0]) & (lt <= lbbounds[1]) &
+             (bt > lbbounds[2]) & (bt <= lbbounds[3]))
 
     survey = OrderedDict([(k,v[I]) for k,v in tiles.items()])
     
@@ -313,11 +313,13 @@ def GetNightlyStrategy(date, survey_centers, filters, time=None):
         obs.date = sn+time_elapsed*s_to_days # reset date
         # tile getting worse the fastest
         dairmass = airmassp - airmass
-        exclude = numpy.ones(len(survey_centers['RA']), dtype='bool')
+        exclude = numpy.zeros(len(survey_centers['RA']), dtype='bool')
+        exclude = exclude | (airmass > 5)
         for f in filters:
-            exclude = exclude & survey_centers['used_tile_%s' % f]
+            exclude = exclude | survey_centers['used_tile_%s' % f]
         if numpy.all(exclude):
             print 'Ran out of tiles to observe before night was done!'
+            print 'Minutes left in night: %5.1f' % ((lon-time_elapsed)/60.)
             break
         if len(tonightsplan['RA']) > 1:
             slew = numpy.clip(gc_dist(tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
