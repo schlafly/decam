@@ -1,0 +1,14 @@
+DECam utilities
+
+The biggest piece right now is a simplified version of A. Patej's
+nightlystrategy.py, which makes observing plans for nights at DECam.
+
+Requires pyephem to run, and can be invoked via: 
+
+python nightstrat.py 2016-03-13 decaps-tiles.fits gr plan 
+
+The above makes a plan for the night of 2016-03-13 using the tile centers in
+decaps-tiles.fits, for the gr filters, and outputs the results to plan.json
+and sanity plots to plan.png.
+
+
