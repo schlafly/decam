@@ -315,8 +315,10 @@ def GetNightlyStrategy(date, survey_centers, filters, time=None):
         dairmass = airmassp - airmass
         exclude = numpy.zeros(len(survey_centers['RA']), dtype='bool')
         exclude = exclude | (airmass > 5)
+        filters_done = numpy.ones(len(survey_centers['RA']), dtype='bool')
         for f in filters:
-            exclude = exclude | survey_centers['used_tile_%s' % f]
+            filters_done = filters_done & survey_centers['used_tile_%s' % f]
+        exclude = exclude | filters_done
         if numpy.all(exclude):
             print 'Ran out of tiles to observe before night was done!'
             print 'Minutes left in night: %5.1f' % ((lon-time_elapsed)/60.)
@@ -326,7 +328,7 @@ def GetNightlyStrategy(date, survey_centers, filters, time=None):
                                       survey_centers['RA'], survey_centers['DEC'])-2, 0., numpy.inf)
         else:
             slew = 0
-        nexttile = numpy.argmax(dairmass-slew*0.00001-exclude*1.e10)
+        nexttile = numpy.argmax(dairmass-slew*0.000004-exclude*1.e10)
         deltat, nexp = pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters[::filterorder], obs)
         time_elapsed += deltat
         #print survey_centers['RA_STR'][nexttile], survey_centers['DEC_STR'][nexttile]
