@@ -9,6 +9,7 @@ strategy: observe the pointing that is getting worst the fastest
 import pyfits
 import ephem
 import numpy as np
+import json
 
 import pdb
 
@@ -139,40 +140,27 @@ def gc_dist(lon1, lat1, lon2, lat2):
 
 #####################################################
 def WriteJSON(pl, outfilename):
-    jf = open(outfilename,'w')
-    jf.write('['+ '\n')
+    # Convert the plan into a list of dictionaries
+    n_exposures = len(pl['RA'])
 
-    ntot = len(pl['RA'])
+    exposure_list = ([
+        {
+            'seqid': 1,
+            'seqnum': k+1,
+            'seqtot': n_exposures,
+            'expType': 'object',
+            'object': 'DECaPS_{:d}_{:s}'.format(pl['TILEID'][k], pl['filter'][k]),
+            'expTime': pl['exp_time'][k],
+            'filter': pl['filter'][k],
+            'RA': np.mod(pl['RA'][k], 360.), #'{:.3f}'.format(np.mod(pl['RA'][k], 360.)),
+            'dec': pl['DEC'][k] #'{:.3f}'.format(pl['DEC'][k])
+        }
+        for k in range(n_exposures)
+    ])
 
-    for k in range(0,ntot):
-        jf.write(' {'+'\n')
-
-        jf.write('  "seqid": '+'"'+'%d' % (1)+'",'+'\n')
-        jf.write('  "seqnum": '+ '%d' % (k+1) +','+'\n')
-        jf.write('  "seqtot": '+'%d' % ntot+','+'\n')
-        jf.write('  "expType": '+'"object",'+'\n')
-        jf.write('  "object": '+ '"DECaPS_'+str(pl['TILEID'][k])+'_'+pl['filter'][k]+'",'+'\n')
-        jf.write('  "expTime": '+'%d' % pl['exp_time'][k]+','+'\n')
-        jf.write('  "filter": '+'"'+pl['filter'][k]+'",'+'\n')
-
-        ra_w = pl['RA'][k] % 360.
-
-        jf.write('  "RA": '+'%.3f' % ra_w+','+'\n')
-        jf.write('  "dec": '+'%.3f' % pl['DEC'][k]+'\n')
-        if k == len(pl['RA'])-1:
-            jf.write(' }'+'\n')
-        else:
-            jf.write(' },'+'\n')
-
-
-
-    jf.write(']')
-    jf.close()
-
-    # Check that we wrote valid JSON by opening & parsing
-    f = open(outfilename)
-    import json
-    json.load(f)
+    # Write to JSON
+    f = open(outfilename, 'w')
+    json.dump(exposure_list, f, indent=2, separators=(',',': '))
     f.close()
 
 
