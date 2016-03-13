@@ -139,15 +139,12 @@ def gc_dist(lon1, lat1, lon2, lat2):
 
 
 #####################################################
-def WriteJSON(pl, outfilename):
+def WriteJSON(pl, fname, chunks=1):
     # Convert the plan into a list of dictionaries
     n_exposures = len(pl['RA'])
 
     exposure_list = ([
         {
-            'seqid': 1,
-            'seqnum': k+1,
-            'seqtot': n_exposures,
             'expType': 'object',
             'object': 'DECaPS_{:d}_{:s}'.format(pl['TILEID'][k], pl['filter'][k]),
             'expTime': pl['exp_time'][k],
@@ -159,9 +156,14 @@ def WriteJSON(pl, outfilename):
     ])
 
     # Write to JSON
-    f = open(outfilename, 'w')
-    json.dump(exposure_list, f, indent=2, separators=(',',': '))
-    f.close()
+    chunk_size = int(np.ceil(float(n_exposures) / float(chunks)))
+
+    for c in range(chunks):
+        i0 = c * chunk_size
+        i1 = (c+1) * chunk_size
+        f = open('{:s}_{:02d}.json'.format(fname, c), 'w')
+        json.dump(exposure_list[i0:i1], f, indent=2, separators=(',',': '))
+        f.close()
 
 
 def equgal(ra, dec):
@@ -399,44 +401,57 @@ def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters, ob
 
     return time_elapsed, n_exp
 
-def plot_plan(plan, survey_centers=None, filename=None):
-    from matplotlib import pyplot as p
-    p.clf()
+def plot_plan(plan, date, survey_centers=None, filename=None):
+    from matplotlib import pyplot as plt
+
+    fig = plt.figure()
+
+    fig.suptitle(r'$\mathrm{{ Plan \ for \ {} }}$'.format(date), fontsize=18)
+
     for i, lb in enumerate([False, True]):
-        p.subplot(3,1,i+1)
+        ax = fig.add_subplot(3,1,i+1)
+
         if survey_centers is not None:
             coords = (survey_centers['RA'], survey_centers['DEC'])
             if lb:
                 coords = equgal(*coords)
-            p.plot(coords[0], coords[1], 'o', markeredgecolor='none',
-                   markerfacecolor='lightgray', markersize=20, zorder=-1)
+            ax.plot(coords[0], coords[1], 'o', markeredgecolor='none',
+                    markerfacecolor='lightgray', markersize=20, zorder=-1)
+
         coords = (plan['RA'], plan['DEC'])
+
         if lb:
             coords = equgal(*coords)
-        p.plot(coords[0], coords[1], '-')
+
+        ax.plot(coords[0], coords[1], '-')
+
         if lb:
-            p.xlabel('l')
-            p.ylabel('b')
+            ax.set_xlabel(r'$\ell$')
+            ax.set_ylabel(r'$b$')
         else:
-            p.xlabel('l')
-            p.ylabel('b')
+            ax.set_xlabel(r'$\mathrm{RA}$')
+            ax.set_ylabel(r'$\delta$')
 
         startday = np.floor(np.min(plan['approx_time']))
+
         for f in 'grizy':
             m = plan['filter'] == f
-            p.scatter(coords[0][m], coords[1][m], c=plan['approx_time'][m]-startday,
-                      marker=filter_symbols[f], facecolor='none', s=100)
+            ax.scatter(coords[0][m], coords[1][m], c=plan['approx_time'][m]-startday,
+                       marker=filter_symbols[f], facecolor='none', s=100)
 
-    p.subplot(3,2,5)
-    p.plot(plan['approx_time']-startday, plan['airmass'])
-    p.xlabel('hours since %s UT' % ephem.Date(startday))
-    p.ylabel('airmass')
-    p.subplot(3,2,6)
-    p.plot(plan['approx_time']-startday, plan['moon_sep']*180/np.pi)
-    p.xlabel('hours since %s UT' % ephem.Date(startday))
-    p.ylabel('moon separation')
+    ax = fig.add_subplot(3,2,5)
+    ax.plot(plan['approx_time']-startday, plan['airmass'])
+    ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
+    ax.set_ylabel('airmass')
+    ax = fig.add_subplot(3,2,6)
+    ax.plot(plan['approx_time']-startday, np.degrees(plan['moon_sep']))
+    ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
+    ax.set_ylabel('moon separation')
+
+    fig.subplots_adjust(hspace=0.5, wspace=0.3)
+
     if filename is not None:
-        p.savefig(filename)
+        fig.savefig(filename + '.svg')
 
 def main():
     import argparse
@@ -456,6 +471,9 @@ def main():
                         help='use only tiles in ra/dec range, specified as (ramin, ramax, decmin, decmax)')
     parser.add_argument('--lb-bounds', metavar='deg', type=float, nargs=4, default=None,
                         help='use only tiles in lb range, specified as (lmin, lmax, bmin, bmax)')
+    parser.add_argument('--chunks', metavar='N', type=int, default=1,
+                    help='Split the plan up into N chunks.')
+
     args = parser.parse_args()
 
     tilestable = readTilesTable(
@@ -475,8 +493,8 @@ def main():
         obs.date = args.night + ' ' + args.time
 
     plan = GetNightlyStrategy(obs, tilestable[1], args.filters)
-    plot_plan(plan, filename=args.outfile+'.png')
-    WriteJSON(plan, args.outfile+'.json')
+    plot_plan(plan, args.night, filename=args.outfile)
+    WriteJSON(plan, args.outfile, chunks=args.chunks)
 
 
 
