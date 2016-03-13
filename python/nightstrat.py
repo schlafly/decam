@@ -294,8 +294,12 @@ def GetNightlyStrategy(obs, survey_centers, filters):
         exclude = (airmass[:,0] > 5)
 
         # Exclude tiles that have been observed before
+        filters_done = np.ones(len(survey_centers['RA']), dtype='bool')
+
         for f in filters:
-            exclude = exclude | survey_centers['used_tile_{:s}'.format(f)]
+            filters_done = filters_done & survey_centers['used_tile_{:s}'.format(f)]
+
+        exclude = exclude | filters_done
 
         # Bail if there's nothing left to observe
         if np.all(exclude):
@@ -317,7 +321,7 @@ def GetNightlyStrategy(obs, survey_centers, filters):
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.00001*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.000004*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
