@@ -28,9 +28,9 @@
 # ; COMMENTS:
 # ;   This code can be run as an infinite loop while observing at the telescope
 # ;   to continuously update the tile file while observing.  Exposures must
-# ;   be OBTYPE='object' and EXPTIME > 30 sec.  An attempt is made to read
+# ;   be OBTYPE='object' and EXPTIME > 25 sec.  An attempt is made to read
 # ;   the TILEID from the OBJECT keyword in the header, where the assumed
-# ;   format is "DECaLS_XXXXX_f", XXXXX is the tile number and f is the filter
+# ;   format is "DECaPS_XXXXX_f", XXXXX is the tile number and f is the filter
 # ;   name.  Otherwise, a positional match is made to the closest tile
 # ;   if there is a tile within 1 arcmin.
 # ;
@@ -53,6 +53,7 @@
 # ;
 # ; REVISION HISTORY:
 # ;   26-Mar-2015  Written by D. Schlegel, LBL
+# ;   07-Mar-2016  Initial port to python, EFS
 # ;-
 # ;------------------------------------------------------------------------------
 # ; Get the sorted list of all raw data files; the last files are assumed
