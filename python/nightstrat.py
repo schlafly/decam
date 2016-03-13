@@ -8,7 +8,6 @@ strategy: observe the pointing that is getting worst the fastest
 
 import pyfits
 import ephem
-import numpy
 import numpy as np
 
 import pdb
@@ -42,42 +41,36 @@ overheads = 30.
 # Observing Functions, Pyephem, etc
 #####################################################
 
-def get_twilight(obs):
-    '''
-    Compute the twilight times for an observer. If the night
-    has already begun for observer, set start of night to observer's
-    time.
-    '''
-    sun = ephem.Sun()
-
-    start_night = obs.next_setting(sun)
-    end_night = obs.next_rising(sun)
-
-    if start_night > end_night:
-        start_night = obs.date
-
-    return start_night, end_night
-
-
 #####################################################
-def GetAirmass(al):
-    if isinstance(al, list):
-        al[al < 0.07] = 0.07
+def GetAirmass(alt):
+    '''
+    Calculate the airmass at the given altitude (in radians).
+
+    Uses the Hardie (1962) interpolation function.
+    '''
+
+    if isinstance(alt, list):
+        alt[alt < 0.07] = 0.07
     else:
-        al = 0.07 if al < 0.07 else al
-    secz = 1.0/np.sin(al)
-    seczm1 = secz-1.0
-    airm = secz-0.0018167*seczm1-0.002875*seczm1**2-0.0008083*seczm1**3
+        alt = max(alt, 0.07)
+
+    secz = 1.0 / np.sin(alt)
+    seczm1 = secz - 1.0
+
+    airm = (
+        secz
+        - 0.0018167*seczm1
+        - 0.002875*seczm1**2
+        - 0.0008083*seczm1**3
+    )
+
     return airm
 
-#####################################################
-def GetLST(obs):
-    lst_deg = float(obs.sidereal_time())*180.0/np.pi
-    return lst_deg
 
 #####################################################
 # Misc.
 #####################################################
+
 def ConvertRA(raval):
     hours = np.zeros_like(raval)
     minutes = np.zeros_like(raval)
@@ -119,12 +112,29 @@ def ConvertDec(decval):
 #####################################################
 
 def gc_dist(lon1, lat1, lon2, lat2):
-    from numpy import sin, cos, arcsin, sqrt
+    '''
+    Great-circle distance between two points on a sphere.
+    Inputs:
+        lon1  longitude (in degrees) of the first point
+        lat1  latitude (in degrees) of the first point
+        lon2  longitude (in degrees) of the second point
+        lat2  latitude (in degrees) of the second point
+    Output:
+        dist  angular distance (in degrees) between the two points.
+    '''
+    lon1 = np.radians(lon1)
+    lat1 = np.radians(lat1)
+    lon2 = np.radians(lon2)
+    lat2 = np.radians(lat2)
 
-    lon1 = np.radians(lon1); lat1 = np.radians(lat1)
-    lon2 = np.radians(lon2); lat2 = np.radians(lat2)
-
-    return np.degrees(2*arcsin(sqrt( (sin((lat1-lat2)*0.5))**2 + cos(lat1)*cos(lat2)*(sin((lon1-lon2)*0.5))**2 )));
+    return np.degrees(
+        2. * np.arcsin(
+            np.sqrt(
+                np.sin(0.5*(lat1-lat2))**2
+                + np.cos(lat1) * np.cos(lat2) * np.sin(0.5*(lon1-lon2))**2
+            )
+        )
+    );
 
 
 #####################################################
@@ -167,10 +177,10 @@ def WriteJSON(pl, outfilename):
 
 
 def equgal(ra, dec):
-    coord = [ephem.Galactic(ephem.Equatorial(ra0*numpy.pi/180., dec0*numpy.pi/180.))
+    coord = [ephem.Galactic(ephem.Equatorial(ra0*np.pi/180., dec0*np.pi/180.))
              for ra0, dec0 in zip(ra, dec)]
-    l = numpy.array([coord0.lon*180./numpy.pi for coord0 in coord])
-    b = numpy.array([coord0.lat*180./numpy.pi for coord0 in coord])
+    l = np.array([coord0.lon*180./np.pi for coord0 in coord])
+    b = np.array([coord0.lat*180./np.pi for coord0 in coord])
     return l, b
 
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
@@ -233,9 +243,8 @@ def GetNightlyStrategy(obs, survey_centers, filters):
     tonightsplan['lst'] = []
 
     # Get start and end time of night
-    sn, en = get_twilight(obs)
-    obs.date = sn
-
+    sn = obs.date
+    en = obs.next_rising(ephem.Sun())
     lon = (en-sn) * days_to_s
 
     # Make sure the Sun isn't up
@@ -244,6 +253,7 @@ def GetNightlyStrategy(obs, survey_centers, filters):
     if sun.alt > 0:
         print 'WARNING: sun is up?!'
 
+    # Report night start/end times
     print 'Date: {}'.format(obs.date)
     print 'Length of night: {} s'.format(lon)
     print 'Start time of plan (UT): {}'.format(sn)
@@ -257,8 +267,8 @@ def GetNightlyStrategy(obs, survey_centers, filters):
     filterorder = 1
 
     while time_elapsed < lon:
-        obs.date = sn+time_elapsed*s_to_days
-        start_obsdate = obs.date
+        start_obsdate = sn + time_elapsed*s_to_days
+        obs.date = start_obsdate
 
         if obs.date > en:
             break
@@ -266,56 +276,86 @@ def GetNightlyStrategy(obs, survey_centers, filters):
         sun.compute(obs)
         moon.compute(obs)
 
-        airmass = np.zeros_like(survey_centers['RA'])
-        airmassp = np.zeros_like(survey_centers['RA'])
-
         # compute derivative of airmass for each exposure
-        for k in range(0,survey_centers['RA'].size):
-            this_tile = ephem.readdb(str(survey_centers['TILEID'][k])+','+'f'+','+
-                                     survey_centers['RA_STR'][k]+','+
-                                     survey_centers['DEC_STR'][k]+','+'20')
-            this_tile.compute(obs)
-            airmass[k] = GetAirmass(float(this_tile.alt))
-        obs.date = obs.date + 1./24./60./60.
-        for k in range(0,survey_centers['RA'].size):
-            this_tile = ephem.readdb(str(survey_centers['TILEID'][k])+','+'f'+','+
-                                     survey_centers['RA_STR'][k]+','+
-                                     survey_centers['DEC_STR'][k]+','+'20')
-            this_tile.compute(obs)
-            airmassp[k] = GetAirmass(float(this_tile.alt))
-        obs.date = sn+time_elapsed*s_to_days # reset date
-        # tile getting worse the fastest
-        dairmass = airmassp - airmass
-        exclude = numpy.zeros(len(survey_centers['RA']), dtype='bool')
-        exclude = exclude | (airmass > 5)
+        airmass = np.zeros((survey_centers['RA'].size, 2), dtype='f8')
+
+        for j,dt in enumerate((0., s_to_days)):
+            obs.date = start_obsdate + dt
+
+            for k in range(survey_centers['RA'].size):
+                tile_str = ','.join([
+                    str(survey_centers['TILEID'][k]),
+                    'f',
+                    survey_centers['RA_STR'][k],
+                    survey_centers['DEC_STR'][k],
+                    '20'
+                ])
+                this_tile = ephem.readdb(tile_str)
+                this_tile.compute(obs)
+                airmass[k,j] = GetAirmass(float(this_tile.alt))
+
+        obs.date = start_obsdate # reset date
+
+        # Rate of change in airmass (per second)
+        dairmass = airmass[:,1] - airmass[:,0]
+
+        # Exclude tiles with terrible airmass
+        exclude = (airmass[:,0] > 5)
+
+        # Exclude tiles that have been observed before
         for f in filters:
-            exclude = exclude | survey_centers['used_tile_%s' % f]
-        if numpy.all(exclude):
+            exclude = exclude | survey_centers['used_tile_{:s}'.format(f)]
+
+        # Bail if there's nothing left to observe
+        if np.all(exclude):
             print 'Ran out of tiles to observe before night was done!'
-            print 'Minutes left in night: %5.1f' % ((lon-time_elapsed)/60.)
+            print 'Minutes left in night: {:5.1f}'.format((lon-time_elapsed)/60.)
             break
+
+        # Determine slew time for each possible exposure
         if len(tonightsplan['RA']) > 1:
-            slew = numpy.clip(gc_dist(tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
-                                      survey_centers['RA'], survey_centers['DEC'])-2, 0., numpy.inf)
+            slew = np.clip(
+                gc_dist(
+                    tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
+                    survey_centers['RA'], survey_centers['DEC']
+                ) - 2.,
+                0.,
+                np.inf
+            )
         else:
             slew = 0
-        nexttile = numpy.argmax(dairmass-slew*0.00001-exclude*1.e10)
-        deltat, nexp = pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters[::filterorder], obs)
-        time_elapsed += deltat
-        #print survey_centers['RA_STR'][nexttile], survey_centers['DEC_STR'][nexttile]
+
+        # Select tile based on airmass rate of change and slew time
+        nexttile = np.argmax(dairmass - 0.00001*slew - 1.e10*exclude)
+
+        delta_t, n_exp = pointing_plan(
+            tonightsplan,
+            orig_keys,
+            survey_centers,
+            nexttile,
+            filters[::filterorder],
+            obs
+        )
+
+        time_elapsed += delta_t
+
         filterorder = -filterorder
-        if len(tonightsplan['RA']) > nexp:
-            slew = gc_dist(tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
-                           tonightsplan['RA'][-nexp-1], tonightsplan['DEC'][-nexp-1])
-            slewtime = 3.0*max(slew-2.0, 0.0)
+
+        if len(tonightsplan['RA']) > n_exp:
+            slew = gc_dist(
+                tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
+                tonightsplan['RA'][-n_exp-1], tonightsplan['DEC'][-n_exp-1]
+            )
+            slewtime = 3.0 * max(slew-2.0, 0.0)
             time_elapsed += slewtime
             if slewtime > 0:
-                print 'time spent slewing', slewtime
+                print 'time spent slewing: {:.1f}'.format(slewtime)
 
-    numleft = numpy.sum(exclude == 0)
-    print 'Plan complete, %d observations, %d remaining.' % (len(tonightsplan['RA']), numleft)
+    numleft = np.sum(exclude == 0)
+    print 'Plan complete, {:d} observations, {:d} remaining.'.format(len(tonightsplan['RA']), numleft)
+
     keys = tonightsplan.keys()
-    return numpy.rec.fromarrays([tonightsplan[k] for k in keys], names=keys)
+    return np.rec.fromarrays([tonightsplan[k] for k in keys], names=keys)
 
 
 def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters, obs):
@@ -345,7 +385,7 @@ def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters, ob
         tonightsplan['filter'].append(f)
         tonightsplan['moon_sep'].append(moon_dist)
         tonightsplan['moon_alt'].append(moon_alt)
-        tonightsplan['lst'].append(GetLST(obs))
+        tonightsplan['lst'].append(np.degrees(obs.sidereal_time()))
 
         deltt = exp_time_filters[f] + overheads
         time_elapsed += deltt
@@ -374,7 +414,7 @@ def plot_plan(plan, survey_centers=None, filename=None):
             p.xlabel('l')
             p.ylabel('b')
 
-        startday = numpy.floor(numpy.min(plan['approx_time']))
+        startday = np.floor(np.min(plan['approx_time']))
         for f in 'grizy':
             m = plan['filter'] == f
             p.scatter(coords[0][m], coords[1][m], c=plan['approx_time'][m]-startday,
@@ -385,7 +425,7 @@ def plot_plan(plan, survey_centers=None, filename=None):
     p.xlabel('hours since %s UT' % ephem.Date(startday))
     p.ylabel('airmass')
     p.subplot(3,2,6)
-    p.plot(plan['approx_time']-startday, plan['moon_sep']*180/numpy.pi)
+    p.plot(plan['approx_time']-startday, plan['moon_sep']*180/np.pi)
     p.xlabel('hours since %s UT' % ephem.Date(startday))
     p.ylabel('moon separation')
     if filename is not None:
@@ -411,17 +451,23 @@ def main():
                         help='use only tiles in lb range, specified as (lmin, lmax, bmin, bmax)')
     args = parser.parse_args()
 
-    tilestable = readTilesTable(args.tilefile, expand_footprint=args.expand_footprint,
-                                rdbounds=args.rd_bounds,
-                                lbbounds=args.lb_bounds,
-                                skypass=args.skypass)
-
-    decam.date = '{} {}'.format(
-        args.night,
-        '' if args.time == None else args.time
+    tilestable = readTilesTable(
+        args.tilefile,
+        expand_footprint=args.expand_footprint,
+        rdbounds=args.rd_bounds,
+        lbbounds=args.lb_bounds,
+        skypass=args.skypass
     )
 
-    plan = GetNightlyStrategy(decam, tilestable[1], args.filters)
+    # Set start time of observing plan
+    obs = decam.copy()
+    if args.time == None:
+        obs.date = args.night
+        obs.date = obs.next_setting(ephem.Sun())
+    else:
+        obs.date = args.night + ' ' + args.time
+
+    plan = GetNightlyStrategy(obs, tilestable[1], args.filters)
     plot_plan(plan, filename=args.outfile+'.png')
     WriteJSON(plan, args.outfile+'.json')
 
