@@ -228,7 +228,8 @@ def GetNightlyStrategy(obs, survey_centers, filters):
           the start of the plan; awkward when the night starts just before midnight UT, as it does in March in Chile!
     """
 
-    tonightsplan = OrderedDict()
+    #tonightsplan = OrderedDict()
+    tonightsplan = {}
     orig_keys = survey_centers.keys()
     for key in orig_keys:
         tonightsplan[key] = []
@@ -360,37 +361,55 @@ def GetNightlyStrategy(obs, survey_centers, filters):
 
 def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters, obs):
     time_elapsed = 0
-    nexp = 0
+    n_exp = 0
+
     for f in filters:
-        if survey_centers['used_tile_%s'%f][nexttile] == 1:
+        if survey_centers['used_tile_{:s}'.format(f)][nexttile] == 1:
             continue
-        nexp += 1
-        survey_centers['used_tile_%s'%f][nexttile] = 1
+
+        n_exp += 1
+
+        survey_centers['used_tile_{:s}'.format(f)][nexttile] = 1
+
+        tile_str = ','.join([
+            str(survey_centers['TILEID'][nexttile]),
+            'f',
+            survey_centers['RA_STR'][nexttile],
+            survey_centers['DEC_STR'][nexttile],
+            '20'
+        ])
+        this_tile = ephem.readdb(tile_str)
+        this_tile.compute(obs)
+
+        # Compute airmass
+        airm = GetAirmass(float(this_tile.alt))
+
+        # Compute moon separation
+        moon.compute(obs)
+        moon_dist = ephem.separation(
+            (this_tile.az,this_tile.alt),
+            (moon.az,moon.alt)
+        )
+        moon_alt = np.degrees(moon.alt)
+
+        # Add this exposure to tonight's plan
         for key in orig_keys:
             tonightsplan[key].append(survey_centers[key][nexttile])
+
         tonightsplan['exp_time'].append(exp_time_filters[f])
         tonightsplan['approx_datetime'].append(obs.date)
-        this_tile = ephem.readdb(str(survey_centers['TILEID'][nexttile])+','+'f'+','+
-                                 survey_centers['RA_STR'][nexttile]+','+
-                                 survey_centers['DEC_STR'][nexttile]+','+'20')
-        this_tile.compute(obs)
-        airm = GetAirmass(float(this_tile.alt))
-        moon.compute(obs)
-        moon_dist = ephem.separation((this_tile.az,this_tile.alt),(moon.az,moon.alt))
-        moon_alt = moon.alt*180.0/np.pi
-
         tonightsplan['airmass'].append(airm)
-        #pdb.set_trace()
         tonightsplan['approx_time'].append(obs.date)
         tonightsplan['filter'].append(f)
         tonightsplan['moon_sep'].append(moon_dist)
         tonightsplan['moon_alt'].append(moon_alt)
         tonightsplan['lst'].append(np.degrees(obs.sidereal_time()))
 
-        deltt = exp_time_filters[f] + overheads
-        time_elapsed += deltt
-        obs.date = obs.date + deltt*s_to_days
-    return time_elapsed, nexp
+        delta_t = exp_time_filters[f] + overheads
+        time_elapsed += delta_t
+        obs.date = obs.date + delta_t * s_to_days
+
+    return time_elapsed, n_exp
 
 def plot_plan(plan, survey_centers=None, filename=None):
     from matplotlib import pyplot as p
