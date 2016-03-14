@@ -130,7 +130,7 @@ def process(file, tdata, minexptime=25):
         print obstype, exptime
         tileid = 0
     else:
-        if (obj3[0] == 'DECaPS') and (len(ob3) == 3):
+        if (obj3[0] == 'DECaPS') and (len(obj3) == 3):
             tileid = int(obj3[1])
         else:
             dd = gc_dist(tdata['ra'], tdata['dec'], ra, dec)
