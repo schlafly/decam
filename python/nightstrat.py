@@ -457,6 +457,14 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
     if filename is not None:
         fig.savefig(filename + '.svg')
 
+
+def write_plan_schedule(plan, fname):
+    with open(fname + '_schedule.log', 'w') as f:
+        f.write('# TILEID     date-time\n')
+        for tid,t in zip(plan['TILEID'], plan['approx_time']):
+            f.write('  {:<8d}   {}\n'.format(tid, ephem.Date(t)))
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Plan night.',
@@ -499,6 +507,7 @@ def main():
     plan = GetNightlyStrategy(obs, tilestable[1], args.filters)
     plot_plan(plan, args.night, filename=args.outfile)
     WriteJSON(plan, args.outfile, chunks=args.chunks)
+    write_plan_schedule(plan, args.outfile)
 
 
 
