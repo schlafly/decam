@@ -30,7 +30,7 @@
 # ;   to continuously update the tile file while observing.  Exposures must
 # ;   be OBTYPE='object' and EXPTIME > 25 sec.  An attempt is made to read
 # ;   the TILEID from the OBJECT keyword in the header, where the assumed
-# ;   format is "DECaPS_XXXXX_f", XXXXX is the tile number and f is the filter
+# ;   format is "DECaLS_XXXXX_f", XXXXX is the tile number and f is the filter
 # ;   name.  Otherwise, a positional match is made to the closest tile
 # ;   if there is a tile within 1 arcmin.
 # ;
@@ -135,7 +135,7 @@ def process(file, tdata, minexptime=25):
         print obstype, exptime
         tileid = 0
     else:
-        if (obj3[0] == 'DECaPS') and (len(obj3) == 3):
+        if (obj3[0] == 'DECaLS') and (len(obj3) == 3):
             tileid = int(obj3[1])
         else:
             dd = gc_dist(tdata['ra'], tdata['dec'], ra, dec)
@@ -153,7 +153,7 @@ def process(file, tdata, minexptime=25):
     if len(ind) == 0:
         print('Invalid TILEID = %d' % tileid)
         return
-    if filt not in 'grizy':
+    if filt not in 'grz':
         print('Invalid filter %s' % filt)
         return
     print('Adding TILEID=%d FILTER=%s' % (tileid, filt))
