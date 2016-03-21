@@ -126,7 +126,6 @@ def process(file, tdata, minexptime=25):
     dateobstime = dateutil.parser.parse(hdr['DATE-OBS'])
     dateobstime = dateobstime + datetime.timedelta(hours=-18)
     dateobs = dateobstime.isoformat()[0:10]
-    print hdr['DATE-OBS'], dateobs
 
     obj = hdr['OBJECT']
     filt = hdr['filter'][0:1].lower()
