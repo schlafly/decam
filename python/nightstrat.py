@@ -30,8 +30,8 @@ decam.pressure = 780.0 # mbar
 #decam.horizon = -np.sqrt(2.0*decam.elev/R_earth)
 decam.horizon = -ephem.degrees('12:00:00.0')
 
-exp_time_filters = {'g':96, 'r':30, 'i':30, 'z':30, 'y':30 }
-filter_symbols = {'g':'+', 'r':'<', 'i':'p', 'z':'o', 'y':'x'}
+exp_time_filters = {'g':96, 'r':30, 'i':30, 'z':30, 'Y':30 }
+filter_symbols = {'g':'+', 'r':'<', 'i':'p', 'z':'o', 'Y':'x'}
 
 sun = ephem.Sun()
 moon = ephem.Moon()
@@ -250,7 +250,7 @@ def GetNightlyStrategy(obs, survey_centers, filters):
     print 'Start time of plan (UT): {}'.format(sn)
     print 'End time of night (UT): {}'.format(en)
 
-    for f in 'grizy':
+    for f in 'grizY':
         col = 'used_tile_{:s}'.format(f)
         survey_centers[col] = survey_centers['{:s}_DONE'.format(f.capitalize())].copy()
 
@@ -438,7 +438,7 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
 
         startday = np.floor(np.min(plan['approx_time']))
 
-        for f in 'grizy':
+        for f in 'grizY':
             m = plan['filter'] == f
             ax.scatter(coords[0][m], coords[1][m], c=plan['approx_time'][m]-startday,
                        marker=filter_symbols[f], facecolor='none', s=100)
@@ -456,6 +456,14 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
 
     if filename is not None:
         fig.savefig(filename + '.svg')
+
+
+def write_plan_schedule(plan, fname):
+    with open(fname + '_schedule.log', 'w') as f:
+        f.write('# TILEID     date-time\n')
+        for tid,t in zip(plan['TILEID'], plan['approx_time']):
+            f.write('  {:<8d}   {}\n'.format(tid, ephem.Date(t)))
+
 
 def main():
     import argparse
@@ -499,6 +507,7 @@ def main():
     plan = GetNightlyStrategy(obs, tilestable[1], args.filters)
     plot_plan(plan, args.night, filename=args.outfile)
     WriteJSON(plan, args.outfile, chunks=args.chunks)
+    write_plan_schedule(plan, args.outfile)
 
 
 
