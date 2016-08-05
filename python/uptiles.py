@@ -62,10 +62,12 @@
 import numpy
 import time
 import os
-import pyfits
 import fnmatch
 import dateutil.parser
 import datetime
+from astropy.io import fits
+import fitsio
+
 
 # stolen from internet, Simon Brunning
 def locate(pattern, root=None):
@@ -79,19 +81,26 @@ def locate(pattern, root=None):
         for filename in fnmatch.filter(files2, pattern):
             yield os.path.join(os.path.abspath(root), filename)
 
+
 def search(expr, topdir=None):
     files = numpy.array(list(locate(expr, root=topdir)))
     s = numpy.argsort(files)
     files = files[s]
     return files
 
+
 def gc_dist(lon1, lat1, lon2, lat2):
     from numpy import sin, cos, arcsin, sqrt
 
-    lon1 = numpy.radians(lon1); lat1 = numpy.radians(lat1)
-    lon2 = numpy.radians(lon2); lat2 = numpy.radians(lat2)
+    lon1 = numpy.radians(lon1)
+    lat1 = numpy.radians(lat1)
+    lon2 = numpy.radians(lon2)
+    lat2 = numpy.radians(lat2)
 
-    return numpy.degrees(2*arcsin(sqrt( (sin((lat1-lat2)*0.5))**2 + cos(lat1)*cos(lat2)*(sin((lon1-lon2)*0.5))**2 )));
+    return numpy.degrees(2*arcsin(sqrt(
+        (sin((lat1-lat2)*0.5))**2 +
+        cos(lat1)*cos(lat2)*(sin((lon1-lon2)*0.5))**2)))
+
 
 def str2dec(string):
     string = string.strip()
@@ -105,12 +114,14 @@ def str2dec(string):
     h, m, s = [float(s) for s in string.split(':')]
     return sign * (h + (m / 60.) + (s / 60. / 60.))
 
+
 def process(file, tdata, minexptime=25):
     print('Processing file %s' % file)
     qdone = False
     for i in xrange(5):
         try:
-            hdr = pyfits.getheader(file)
+            # hdr = fits.getheader(file)
+            hdr = fitsio.read_header(file)
         except:
             time.sleep(2)
         else:
@@ -118,7 +129,7 @@ def process(file, tdata, minexptime=25):
     if not qdone:
         print('Could not read file %s' % file)
         return
-    obstype = hdr['OBSTYPE']
+    obstype = hdr['OBSTYPE'].strip()
     exptime = hdr['EXPTIME']
     expnum = hdr['EXPNUM']
     ra = str2dec(hdr['ra'])*15.
@@ -131,7 +142,7 @@ def process(file, tdata, minexptime=25):
     filt = hdr['filter'][0:1].lower()
     obj3 = obj.split('_')
     if (obstype != 'object') or (exptime <= minexptime):
-        print obstype, exptime
+        print(obstype, exptime, hdr['OBJECT'])
         tileid = 0
     else:
         if (obj3[0] == 'DECaPS') and (len(obj3) == 3):
@@ -144,6 +155,7 @@ def process(file, tdata, minexptime=25):
                 tileid = int(tdata[imin]['tileid'])
             else:
                 tileid = 0
+                print(hdr['OBJECT'])
 
     if tileid <= 0:
         print('Invalid TILEID = %d' % tileid)
@@ -160,25 +172,27 @@ def process(file, tdata, minexptime=25):
     tdata[filt+'_date'][ind] = dateobs
     tdata[filt+'_expnum'][ind] = expnum
 
+
 def write(tdata, tfile):
     print('Writing file %s' % tfile)
-    pyfits.writeto(tfile, tdata, clobber=True)
+    fits.writeto(tfile, tdata, clobber=True)
 
-def update(expr='*/*.fits.fz', topdir=None, tfile=None, wtime=None, 
+
+def update(expr='*/*_ooi_*.fits.fz', topdir=None, tfile=None, wtime=None,
            noloop=False, debug=False):
     if topdir is None:
         topdir = os.environ.get('DECAM_DATA', '')
     if topdir == '':
         raise ValueError('topdir keyword or $DECAM_DATA env must be set!')
     if tfile is None:
-        tfile = os.path.join(os.environ['HOME'], 'observing', 'obstatus', 
+        tfile = os.path.join(os.environ['HOME'], 'observing', 'obstatus',
                              'decam-tiles_obstatus.fits')
     if wtime is None:
         wtime = 10
     if wtime < 1:
         wtime = 1
 
-    tdata = pyfits.getdata(tfile, 1)
+    tdata = fits.getdata(tfile, 1)
 
     nfile = 0
     while True:
@@ -186,11 +200,12 @@ def update(expr='*/*.fits.fz', topdir=None, tfile=None, wtime=None,
         files = search(expr, topdir=topdir)
         if len(files) != nfile:
 # if I really know the order and what it means, better to just check if the
-# last file is the same as it used to be?  Currently seems fragile to file 
+# last file is the same as it used to be?  Currently seems fragile to file
 # deletion, weird files, ...
             for i in xrange(nfile, len(files)):
+                print(i, len(files)-nfile)
                 process(files[i], tdata, minexptime=25)
-            if debug == 0:
+            if not debug:
                 write(tdata, tfile)
             nfile = len(files)
         if noloop:
