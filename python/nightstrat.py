@@ -234,13 +234,14 @@ def equgal(ra, dec):
 
 
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
-                   lbbounds=None, skypass=-1):
+                   lbbounds=None, skypass=-1, weatherfile=None):
     tiles_in = fits.getdata(filename, 1)
 
     tiles = OrderedDict()
     # Check that required columns exist
     for col in ['TILEID', 'PASS', 'IN_SDSS', 'IN_DES', 'IN_DESI', 'IN_DECAPS',
-                'G_DONE', 'R_DONE', 'I_DONE', 'Z_DONE', 'Y_DONE']:
+                'G_DONE', 'R_DONE', 'I_DONE', 'Z_DONE', 'Y_DONE',
+                'G_EXPNUM', 'R_EXPNUM', 'I_EXPNUM', 'Z_EXPNUM', 'Y_EXPNUM']:
         tiles[col] = tiles_in[col].astype(int)
     for col in ['RA', 'DEC', 'EBV_MED']:
         tiles[col] = tiles_in[col].astype(float)
@@ -265,6 +266,23 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
              ((((lt > lbbounds[0]) & (lt <= lbbounds[1])) |
               ((lt2 > lbbounds[0]) & (lt2 <= lbbounds[1]))) &
               (bt > lbbounds[2]) & (bt <= lbbounds[3])))
+
+    if weatherfile:
+        import json
+        expweather = json.load(open(weatherfile, 'r'))
+        for exp in expweather:
+            if exp['quality'] != 'bad':
+                continue
+            for f in 'GRIZY':
+                ind = np.flatnonzero(exp['exp_num'] == tiles[f+'_EXPNUM'])
+                if len(ind) == 0:
+                    continue
+                if len(ind) > 1:
+                    raise ValueError('Inconsistent exposure file.')
+                tiles[f+'_DONE'][ind] = 0
+                #print('Marked exposure bad.')
+                #print tiles[f+'_EXPNUM'][ind], exp
+            #pdb.set_trace()
 
     survey = OrderedDict([(k, v[I]) for k, v in tiles.items()])
 
@@ -572,6 +590,9 @@ def main():
                         help='fraction of the night to plan')
     parser.add_argument('--moonsep', type=float, default=40.,
                         help='minimum moon separation to consider')
+    parser.add_argument('--weatherfile', type=str, default='',
+                        help=('mark exposures with bad quality from this '
+                              'file as not yet done'))
 
     args = parser.parse_args()
 
@@ -580,7 +601,8 @@ def main():
         expand_footprint=args.expand_footprint,
         rdbounds=args.rd_bounds,
         lbbounds=args.lb_bounds,
-        skypass=args.skypass
+        skypass=args.skypass,
+        weatherfile=args.weatherfile
     )
 
     # Set start time of observing plan
