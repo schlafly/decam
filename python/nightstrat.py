@@ -87,13 +87,40 @@ def radec_report(obs, ra, dec):
     return msg
 
 
-def night_start_end(obs):
+def night_start_end(obs, obj=None):
+    if obj is None:
+        obj = ephem.Sun()
     obs = obs.copy()
-    t_start = obs.next_setting(ephem.Sun())
+    t_start = obs.next_setting(obj)
     obs.date = t_start
-    t_end = obs.next_rising(ephem.Sun())
+    t_end = obs.next_rising(obj)
     return t_start, t_end
 
+
+def night_times(datestr):
+    obs = decam.copy()
+    obs.date = datestr
+    obs.horizon = 0.0
+    t_sunset, t_sunrise = night_start_end(obs)
+    obs.horizon = -ephem.degrees('10')
+    t_10start, t_10stop = night_start_end(obs)
+    obs.horizon = -ephem.degrees('12')
+    t_12start, t_12stop = night_start_end(obs)
+    obs.horizon = -ephem.degrees('18')
+    t_18start, t_18stop = night_start_end(obs)
+    length = t_12stop - t_12start
+    q1, q2, q3 = [ephem.Date(t_12start+x*length) for x in [0.25, 0.5, 0.75]]
+    obs.horizon = -ephem.degrees('0')
+    obs.date = t_sunset
+    t_moonset, t_moonrise = night_start_end(obs, ephem.Moon())
+    print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
+    print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
+    print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
+    print('18 twi start: %s, 18 twi end: %s' % (t_18start, t_18stop))
+    print('moonset:      %s, moonrise:   %s' % (t_moonset, t_moonrise))
+    print('Q1:           %s' % q1)
+    print('Q2:           %s' % q2)
+    print('Q3:           %s' % q3)
 
 #####################################################
 # Misc.
@@ -280,9 +307,9 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
                 if len(ind) > 1:
                     raise ValueError('Inconsistent exposure file.')
                 tiles[f+'_DONE'][ind] = 0
-                #print('Marked exposure bad.')
-                #print tiles[f+'_EXPNUM'][ind], exp
-            #pdb.set_trace()
+                # print('Marked exposure bad.')
+                # print tiles[f+'_EXPNUM'][ind], exp
+            # pdb.set_trace()
 
     survey = OrderedDict([(k, v[I]) for k, v in tiles.items()])
 
@@ -291,6 +318,11 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
     survey['DEC_STR'] = ConvertDec(survey['DEC'])
 
     return tiles, survey
+
+
+def slewtime(ra1, de1, ra2, de2):
+    """Estimate slew time for slew from ra1, de1 to ra2, de2"""
+    return 3.*np.clip(gc_dist(ra1, de1, ra2, de2) - 2., 0., np.inf)
 
 
 def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
@@ -399,19 +431,13 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
 
         # Determine slew time for each possible exposure
         if len(tonightsplan['RA']) > 1:
-            slew = np.clip(
-                gc_dist(
-                    tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
-                    survey_centers['RA'], survey_centers['DEC']
-                ) - 2.,
-                0.,
-                np.inf
-            )
+            slew = slewtime(tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
+                            survey_centers['RA'], survey_centers['DEC'])
         else:
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.0001*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.00003*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
@@ -427,14 +453,12 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
         filterorder = -filterorder
 
         if len(tonightsplan['RA']) > n_exp:
-            slew = gc_dist(
-                tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
-                tonightsplan['RA'][-n_exp-1], tonightsplan['DEC'][-n_exp-1]
-            )
-            slewtime = 3.0 * max(slew-2.0, 0.0)
-            time_elapsed += slewtime
-            if slewtime > 0:
-                print 'time spent slewing: {:.1f}'.format(slewtime)
+            slew = slewtime(tonightsplan['RA'][-1], tonightsplan['DEC'][-1],
+                            tonightsplan['RA'][-n_exp-1],
+                            tonightsplan['DEC'][-n_exp-1])
+            time_elapsed += slew
+            if slew > 0:
+                print 'time spent slewing: {:.1f}'.format(slew)
 
     numleft = np.sum(exclude == 0)
     print 'Plan complete, {:d} observations, {:d} remaining.'.format(
@@ -498,6 +522,41 @@ def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters,
     return time_elapsed, n_exp
 
 
+def json_to_plan(json, starttime):
+    """From a set of ra, dec, exptime, filter, from json, fill in the
+    approximate times of night and airmasses."""
+
+    plan = {
+        'RA': np.array([float(exp['RA']) for exp in json], dtype='f8'),
+        'DEC': np.array([float(exp['dec']) for exp in json], dtype='f8'),
+        'filter': np.array([exp['filter'] for exp in json])
+    }
+
+    currenttime = starttime/s_to_days
+    approxtime = np.zeros(len(json), dtype='f8')
+    for i, exp in enumerate(json):
+        approxtime[i] = currenttime
+        currenttime += exp['expTime']
+        if i != 0:
+            currenttime += slewtime(float(json[i-1]['RA']),
+                                    float(json[i-1]['dec']),
+                                    float(exp['RA']), float(exp['dec']))
+        currenttime += overheads
+    airmass = np.zeros(len(json), dtype='f4')
+    moon_sep = np.zeros(len(json), dtype='f4')
+    for i, time, exp in zip(range(len(json)), approxtime, json):
+        obs = decam.copy()
+        obs.date = time*s_to_days
+        airmass[i] = radec2airmass(obs, float(exp['RA']), float(exp['dec']))
+        moon_sep[i] = radec_obj_dist(obs,
+                                     float(exp['RA']), float(exp['dec']),
+                                     ephem.Moon())
+    plan['airmass'] = airmass
+    plan['approx_time'] = approxtime*s_to_days
+    plan['moon_sep'] = moon_sep*np.pi/180.
+    return plan
+
+
 def plot_plan(plan, date, survey_centers=None, filename=None):
     from matplotlib import pyplot as plt
 
@@ -540,11 +599,11 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
                        marker=filter_symbols[f], facecolor='none', s=50)
 
     ax = fig.add_subplot(3, 2, 5)
-    ax.plot(plan['approx_time']-startday, plan['airmass'])
+    ax.plot((plan['approx_time']-startday)*24., plan['airmass'])
     ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
     ax.set_ylabel('airmass')
     ax = fig.add_subplot(3, 2, 6)
-    ax.plot(plan['approx_time']-startday, np.degrees(plan['moon_sep']))
+    ax.plot(24.*(plan['approx_time']-startday), np.degrees(plan['moon_sep']))
     ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
     ax.set_ylabel('moon separation')
 
