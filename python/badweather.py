@@ -35,6 +35,9 @@ def check_bad(dat, badfile):
             pass
         if field is None:
             raise ValueError('row format not understood: %s' % row)
+        condition = row['type'].strip()
+        if condition != 'bad':
+            continue
         for f in 'grizy':
             val = dat[f+'_'+field]
             bad = bad | ((val >= start) & (val <= end))

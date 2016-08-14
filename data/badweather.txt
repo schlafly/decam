@@ -1,2 +1,6 @@
-start, end
-2016-08-10T23:00:00, 2016-08-11T02:40
+# Mark bad weather, either by a range of exposure numbers or UT time
+# type is one of
+# * bad: repeat this observation; existing data are probably useless
+# * marginal: not photometric, but usable
+start, end, type
+2016-08-10T23:00:00, 2016-08-11T02:40:00, bad
