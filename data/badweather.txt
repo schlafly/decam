@@ -4,3 +4,8 @@
 # * marginal: not photometric, but usable
 start, end, type
 2016-08-10T23:00:00, 2016-08-11T02:40:00, bad
+
+2016-08-14T01:00:00, 2016-08-14T01:10:00, marginal
+2016-08-14T01:10:00, 2016-08-14T02:35:00, bad
+2016-08-14T02:35:00, 2016-08-14T03:00:00, marginal
+# willing to call sky clear now.
