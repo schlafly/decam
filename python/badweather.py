@@ -14,9 +14,15 @@ import numpy
 from astropy.io import ascii
 from astropy.time import Time
 
+
 def check_bad(dat, badfile):
+    conditions = get_conditions(dat, badfile)
+    return conditions == 'bad'
+
+
+def get_conditions(dat, badfile):
     badlist = ascii.read(badfile, delimiter=',')
-    bad = numpy.zeros(len(dat), dtype='bool')
+    conditions = numpy.zeros(len(dat), dtype='a200')
     for row in badlist:
         field = None
         try:
@@ -35,10 +41,14 @@ def check_bad(dat, badfile):
             pass
         if field is None:
             raise ValueError('row format not understood: %s' % row)
+        if start > end:
+            print(row)
+            raise ValueError('file not understood, start > end')
         condition = row['type'].strip()
         if condition != 'bad':
             continue
         for f in 'grizy':
             val = dat[f+'_'+field]
-            bad = bad | ((val >= start) & (val <= end))
-    return bad
+            m = (val >= start) & (val <= end)
+            conditions[m] = val[m]
+    return conditions
