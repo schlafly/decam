@@ -168,11 +168,14 @@ def process(file, tdata, minexptime=25):
     if filt not in 'grizy':
         print('Invalid filter %s' % filt)
         return
-    print('Adding TILEID=%d FILTER=%s' % (tileid, filt))
-    tdata[filt+'_done'][ind] = 1
-    tdata[filt+'_date'][ind] = dateobs
-    tdata[filt+'_expnum'][ind] = expnum
-    if filt+'_mjd_obs' in tdata.dtype.names:
+    if tdata[filt+'_mjd_obs'][ind] > mjd_obs:
+        print('Ignoring TILEID=%d FILTER=%s; older than existing tile.'
+              % (tileid, filt))
+    else:
+        print('Adding TILEID=%d FILTER=%s' % (tileid, filt))
+        tdata[filt+'_done'][ind] = 1
+        tdata[filt+'_date'][ind] = dateobs
+        tdata[filt+'_expnum'][ind] = expnum
         tdata[filt+'_mjd_obs'][ind] = mjd_obs
 
 

@@ -529,7 +529,8 @@ def json_to_plan(json, starttime):
     plan = {
         'RA': np.array([float(exp['RA']) for exp in json], dtype='f8'),
         'DEC': np.array([float(exp['dec']) for exp in json], dtype='f8'),
-        'filter': np.array([exp['filter'] for exp in json])
+        'filter': np.array([exp['filter'] for exp in json]),
+        'object': np.array([exp['object'] for exp in json])
     }
 
     currenttime = starttime/s_to_days
@@ -555,6 +556,18 @@ def json_to_plan(json, starttime):
     plan['approx_time'] = approxtime*s_to_days
     plan['moon_sep'] = moon_sep*np.pi/180.
     return plan
+
+
+def json_to_survey_centers(json):
+    survey_centers = {}
+    survey_centers['RA'] = np.array([float(exp['RA']) for exp in json])
+    survey_centers['DEC'] = np.array([float(exp['dec']) for exp in json])
+    for f in 'GRIZY':
+        survey_centers[f+'_DONE'] = np.zeros(len(json), dtype='bool')
+    survey_centers['RA_STR'] = ConvertRA(survey_centers['RA'])
+    survey_centers['DEC_STR'] = ConvertDec(survey_centers['DEC'])
+    survey_centers['TILEID'] = np.arange(len(json), dtype='i4')
+    return survey_centers
 
 
 def plot_plan(plan, date, survey_centers=None, filename=None):
@@ -614,10 +627,14 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
 
 
 def write_plan_schedule(plan, fname):
+    field = 'TILEID' if 'TILEID' in plan else 'object'
     with open(fname + '_schedule.log', 'w') as f:
-        f.write('# TILEID     date-time\n')
-        for tid, t in zip(plan['TILEID'], plan['approx_time']):
-            f.write('  {:<8d}   {}\n'.format(tid, ephem.Date(t)))
+        f.write('# %s     date-time\n' % field)
+        for val, t in zip(plan[field], plan['approx_time']):
+            if field == 'TILEID':
+                f.write('  {:<8d}   {}\n'.format(val, ephem.Date(t)))
+            else:
+                f.write('  {:<20s}   {}\n'.format(val, ephem.Date(t)))
 
 
 def main():
