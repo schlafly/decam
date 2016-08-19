@@ -11,8 +11,11 @@ conditions, and the second format marks times in UT.
 """
 
 import numpy
+import pdb
 from astropy.io import ascii
 from astropy.time import Time
+
+filt2ind = {'g': 0, 'r': 1, 'i': 2, 'z': 3, 'y': 4}
 
 
 def check_bad(dat, badfile):
@@ -22,7 +25,7 @@ def check_bad(dat, badfile):
 
 def get_conditions(dat, badfile):
     badlist = ascii.read(badfile, delimiter=',')
-    conditions = numpy.zeros(len(dat), dtype='a200')
+    conditions = numpy.zeros((len(dat), 5), dtype='a200')
     for row in badlist:
         field = None
         try:
@@ -45,10 +48,12 @@ def get_conditions(dat, badfile):
             print(row)
             raise ValueError('file not understood, start > end')
         condition = row['type'].strip()
-        if condition != 'bad':
-            continue
         for f in 'grizy':
-            val = dat[f+'_'+field]
+            fieldname = f+'_'+field
+            try:
+                val = dat[fieldname]
+            except:
+                val = dat[fieldname.upper()]
             m = (val >= start) & (val <= end)
-            conditions[m] = val[m]
+            conditions[m, filt2ind[f]] = condition
     return conditions

@@ -264,13 +264,22 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
                    lbbounds=None, skypass=-1, weatherfile=None):
     tiles_in = fits.getdata(filename, 1)
 
+    if weatherfile:
+        import badweather
+        badtiles = badweather.check_bad(tiles_in, weatherfile)
+        for filt, ind in zip('grizy', range(5)):
+            tiles_in[filt+'_done'] = (
+                tiles_in[filt+'_done'] & (badtiles[:, ind] == 0))
+
     tiles = OrderedDict()
     # Check that required columns exist
-    for col in ['TILEID', 'PASS', 'IN_SDSS', 'IN_DES', 'IN_DESI', 'IN_DECAPS',
-                'G_DONE', 'R_DONE', 'I_DONE', 'Z_DONE', 'Y_DONE',
-                'G_EXPNUM', 'R_EXPNUM', 'I_EXPNUM', 'Z_EXPNUM', 'Y_EXPNUM']:
+    for col in (['TILEID', 'PASS', 'IN_SDSS', 'IN_DES', 'IN_DESI', 'IN_DECAPS',
+                 'G_DONE', 'R_DONE', 'I_DONE', 'Z_DONE', 'Y_DONE',
+                 'G_EXPNUM', 'R_EXPNUM', 'I_EXPNUM', 'Z_EXPNUM', 'Y_EXPNUM']):
         tiles[col] = tiles_in[col].astype(int)
-    for col in ['RA', 'DEC', 'EBV_MED']:
+    for col in ['RA', 'DEC', 'EBV_MED',
+                'G_MJD_OBS', 'R_MJD_OBS', 'I_MJD_OBS', 'Z_MJD_OBS',
+                'Y_MJD_OBS']:
         tiles[col] = tiles_in[col].astype(float)
 
     # Cut to tiles of interest:
@@ -293,23 +302,6 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
              ((((lt > lbbounds[0]) & (lt <= lbbounds[1])) |
               ((lt2 > lbbounds[0]) & (lt2 <= lbbounds[1]))) &
               (bt > lbbounds[2]) & (bt <= lbbounds[3])))
-
-    if weatherfile:
-        import json
-        expweather = json.load(open(weatherfile, 'r'))
-        for exp in expweather:
-            if exp['quality'] != 'bad':
-                continue
-            for f in 'GRIZY':
-                ind = np.flatnonzero(exp['exp_num'] == tiles[f+'_EXPNUM'])
-                if len(ind) == 0:
-                    continue
-                if len(ind) > 1:
-                    raise ValueError('Inconsistent exposure file.')
-                tiles[f+'_DONE'][ind] = 0
-                # print('Marked exposure bad.')
-                # print tiles[f+'_EXPNUM'][ind], exp
-            # pdb.set_trace()
 
     survey = OrderedDict([(k, v[I]) for k, v in tiles.items()])
 
@@ -627,10 +619,15 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
 
 
 def write_plan_schedule(plan, fname):
-    field = 'TILEID' if 'TILEID' in plan else 'object'
+    try:
+        field = 'TILEID'
+        fieldname = plan['TILEID']
+    except ValueError:
+        field = 'object'
+        fieldname = plan['object']
     with open(fname + '_schedule.log', 'w') as f:
         f.write('# %s     date-time\n' % field)
-        for val, t in zip(plan[field], plan['approx_time']):
+        for val, t in zip(fieldname, plan['approx_time']):
             if field == 'TILEID':
                 f.write('  {:<8d}   {}\n'.format(val, ephem.Date(t)))
             else:
@@ -649,7 +646,8 @@ def main():
     parser.add_argument('--time', '-t', type=str, default=None,
                         help='time of night to start, 00:00:00.00 (UT)')
     parser.add_argument('--pass', type=int, default=1, dest='skypass',
-                        help='Specify pass (dither) number (1,2, or 3)')
+                        help='Specify pass (dither) number (1,2, or 3); '
+                        '0 implies all passes.')
     parser.add_argument('--expand-footprint', action='store_true',
                         help='Use tiles outside nominal footprint')
     parser.add_argument(

@@ -116,7 +116,7 @@ def str2dec(string):
 
 
 def process(file, tdata, minexptime=25):
-    print('Processing file %s' % file)
+    print('Processing file %s' % os.path.basename(file))
     qdone = False
     for i in xrange(5):
         try:
@@ -169,10 +169,11 @@ def process(file, tdata, minexptime=25):
         print('Invalid filter %s' % filt)
         return
     if tdata[filt+'_mjd_obs'][ind] > mjd_obs:
-        print('Ignoring TILEID=%d FILTER=%s; older than existing tile.'
-              % (tileid, filt))
+        print('Ignoring TILEID=%d FILTER=%s MJD=%f; older than existing tile.'
+              % (tileid, filt, mjd_obs))
+        print(mjd_obs, tdata[filt+'_mjd_obs'][ind])
     else:
-        print('Adding TILEID=%d FILTER=%s' % (tileid, filt))
+        print('Adding TILEID=%d FILTER=%s MJD=%f' % (tileid, filt, mjd_obs))
         tdata[filt+'_done'][ind] = 1
         tdata[filt+'_date'][ind] = dateobs
         tdata[filt+'_expnum'][ind] = expnum
@@ -209,7 +210,9 @@ def update(expr='*/*_ooi_*.fits.fz', topdir=None, tfile=None, wtime=None,
 # last file is the same as it used to be?  Currently seems fragile to file
 # deletion, weird files, ...
             for i in xrange(nfile, len(files)):
-                print(i, len(files)-nfile)
+                if (i % 100) == 0:
+                    print('Processing file %d of %d' % (i+1, len(files)-nfile))
+                    print(i, len(files)-nfile)
                 process(files[i], tdata, minexptime=25)
             if not debug:
                 write(tdata, tfile)
