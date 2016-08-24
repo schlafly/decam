@@ -318,7 +318,7 @@ def slewtime(ra1, de1, ra2, de2):
 
 
 def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
-                       minmoonsep=40.):
+                       minmoonsep=40., optimize_ha=False):
     """date: UT; if time is not set, the next setting of the sun following start
     of that date is the start of the plan; awkward when the night starts just
     before midnight UT, as it does in March in Chile!
@@ -338,6 +338,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
     tonightsplan['filter'] = []
     tonightsplan['exp_time'] = []
     tonightsplan['lst'] = []
+    tonightsplan['ha'] = []
 
     # Get start and end time of night
     sn = obs.date
@@ -377,6 +378,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
 
         # compute derivative of airmass for each exposure
         airmass = np.zeros((survey_centers['RA'].size, 2), dtype='f8')
+        ha = np.zeros((survey_centers['RA'].size, 2), dtype='f8')
         moonsep = np.zeros((survey_centers['RA'].size), dtype='f8')
 
         for j in range(survey_centers['RA'].size):
@@ -396,11 +398,16 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
                 obs.date = start_obsdate + dt
                 this_tile.compute(obs)
                 airmass[j, k] = alt2airmass(float(this_tile.alt))
+                ha[j, k] = (survey_centers['RA'][j] -
+                            np.degrees(obs.sidereal_time()))/15.
 
         obs.date = start_obsdate  # reset date
 
         # Rate of change in airmass^3 (per second)
-        dairmass = airmass[:, 1]**3. - airmass[:, 0]**3.
+        if not optimize_ha:
+            dairmass = airmass[:, 1]**3. - airmass[:, 0]**3.
+        else:
+            dairmass = -(ha[:, 1])*1e-4
 
         # Exclude tiles with terrible airmass
         exclude = (airmass[:, 0] > 5) | (moonsep < minmoonsep)
@@ -455,6 +462,12 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
     numleft = np.sum(exclude == 0)
     print 'Plan complete, {:d} observations, {:d} remaining.'.format(
         len(tonightsplan['RA']), numleft)
+    if np.any(np.abs(tonightsplan['ha']) > 5.25):
+        print('************************************************')
+        print('WARNING: some hour angles impossible to observe!')
+        print('************************************************')
+        if not optimize_ha:
+            print('Consider rerunning with optimize_ha!')
 
     keys = tonightsplan.keys()
     return np.rec.fromarrays([tonightsplan[k] for k in keys], names=keys)
@@ -501,6 +514,8 @@ def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters,
         tonightsplan['exp_time'].append(exp_time_filters[f])
         tonightsplan['approx_datetime'].append(obs.date)
         tonightsplan['airmass'].append(airm)
+        ha = survey_centers['RA'][nexttile] - np.degrees(obs.sidereal_time())
+        tonightsplan['ha'].append(ha/15.)
         tonightsplan['approx_time'].append(obs.date)
         tonightsplan['filter'].append(f)
         tonightsplan['moon_sep'].append(moon_dist)
@@ -550,6 +565,17 @@ def json_to_plan(json, starttime):
     return plan
 
 
+def plan_hour_angles(plan):
+    obs = decam.copy()
+    ha = np.zeros(len(plan['RA']), dtype='f4')
+    for i, r, d, t in zip(range(len(plan['RA'])), plan['RA'], plan['DEC'],
+                          plan['approx_time']):
+        obs.date = t
+        lst = obs.sidereal_time()
+        ha[i] = r - np.degrees(lst)
+    return ha
+
+
 def json_to_survey_centers(json):
     survey_centers = {}
     survey_centers['RA'] = np.array([float(exp['RA']) for exp in json])
@@ -569,8 +595,10 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
 
     fig.suptitle(r'$\mathrm{{ Plan \ for \ {} }}$'.format(date), fontsize=18)
 
+    nrow = 3 + ('ha' in plan.dtype.names)
+
     for i, lb in enumerate([False, True]):
-        ax = fig.add_subplot(3, 1, i+1)
+        ax = fig.add_subplot(nrow, 1, i+1)
 
         if survey_centers is not None:
             coords = (survey_centers['RA'], survey_centers['DEC'])
@@ -603,14 +631,21 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
                        c=plan['approx_time'][m]-startday, edgecolor='none',
                        marker=filter_symbols[f], facecolor='none', s=50)
 
-    ax = fig.add_subplot(3, 2, 5)
+    ax = fig.add_subplot(nrow, 2, 5)
     ax.plot((plan['approx_time']-startday)*24., plan['airmass'])
     ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
     ax.set_ylabel('airmass')
-    ax = fig.add_subplot(3, 2, 6)
+    ax = fig.add_subplot(nrow, 2, 6)
     ax.plot(24.*(plan['approx_time']-startday), np.degrees(plan['moon_sep']))
     ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
     ax.set_ylabel('moon separation')
+
+    if 'ha' in plan.dtype.names:
+        ax = fig.add_subplot(nrow, 1, nrow)
+        ax.plot(24.*(plan['approx_time']-startday), plan['ha'])
+        ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
+        ax.set_ylabel('hour angle')
+        ax.axhline(-5.25, color='red', linestyle='--')
 
     fig.subplots_adjust(hspace=0.5, wspace=0.3)
 
@@ -667,6 +702,9 @@ def main():
     parser.add_argument('--weatherfile', type=str, default='',
                         help=('mark exposures with bad quality from this '
                               'file as not yet done'))
+    parser.add_argument('--optimize_ha', dest='optimize_ha',
+                        action='store_true',
+                        help='optimize on hour angle, not airmass')
 
     args = parser.parse_args()
 
@@ -688,7 +726,8 @@ def main():
         obs.date = args.night + ' ' + args.time
 
     plan = GetNightlyStrategy(obs, tilestable[1], args.filters, args.nightfrac,
-                              minmoonsep=args.moonsep)
+                              minmoonsep=args.moonsep,
+                              optimize_ha=args.optimize_ha)
     plot_plan(plan, args.night, filename=args.outfile)
     WriteJSON(plan, args.outfile, chunks=args.chunks)
     write_plan_schedule(plan, args.outfile)
