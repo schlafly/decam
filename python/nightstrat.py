@@ -426,6 +426,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             print 'Ran out of tiles to observe before night was done!'
             print 'Minutes left in night: {:5.1f}'.format(
                 (lon-time_elapsed)/60.)
+            print ('Time ended: %s' % str(obs.date))
             break
 
         # Determine slew time for each possible exposure
