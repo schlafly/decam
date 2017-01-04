@@ -18,14 +18,17 @@ from astropy.time import Time
 filt2ind = {'g': 0, 'r': 1, 'i': 2, 'z': 3, 'y': 4}
 
 
-def check_bad(dat, badfile):
-    conditions = get_conditions(dat, badfile)
+def check_bad(dat, badfile, fieldname=None):
+    conditions = get_conditions(dat, badfile, fieldname=fieldname)
     return conditions == 'bad'
 
 
-def get_conditions(dat, badfile):
+def get_conditions(dat, badfile, fieldname=None):
     badlist = ascii.read(badfile, delimiter=',')
-    conditions = numpy.zeros((len(dat), 5), dtype='a200')
+    if fieldname is None:
+        conditions = numpy.zeros((len(dat), 5), dtype='a200')
+    else:
+        conditions = numpy.zeros(len(dat), dtype='a20')
     for row in badlist:
         field = None
         try:
@@ -48,12 +51,17 @@ def get_conditions(dat, badfile):
             print(row)
             raise ValueError('file not understood, start > end')
         condition = row['type'].strip()
-        for f in 'grizy':
-            fieldname = f+'_'+field
-            try:
-                val = dat[fieldname]
-            except:
-                val = dat[fieldname.upper()]
+        if fieldname is not None:
+            val = dat[fieldname]
             m = (val >= start) & (val <= end)
-            conditions[m, filt2ind[f]] = condition
+            conditions[m] = condition
+        else:
+            for f in 'grizy':
+                fieldname = f+'_'+field
+                try:
+                    val = dat[fieldname]
+                except:
+                    val = dat[fieldname.upper()]
+                    m = (val >= start) & (val <= end)
+                    conditions[m, filt2ind[f]] = condition
     return conditions

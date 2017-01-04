@@ -87,12 +87,13 @@ def radec_report(obs, ra, dec):
     return msg
 
 
-def night_start_end(obs, obj=None):
+def night_start_end(obs, obj=None, sun=True):
     if obj is None:
         obj = ephem.Sun()
     obs = obs.copy()
     t_start = obs.next_setting(obj)
-    obs.date = t_start
+    if sun:
+        obs.date = t_start
     t_end = obs.next_rising(obj)
     return t_start, t_end
 
@@ -102,6 +103,7 @@ def night_times(datestr):
     obs.date = datestr
     obs.horizon = 0.0
     t_sunset, t_sunrise = night_start_end(obs)
+    obs.date = t_sunset
     obs.horizon = -ephem.degrees('10')
     t_10start, t_10stop = night_start_end(obs)
     obs.horizon = -ephem.degrees('12')
@@ -112,7 +114,8 @@ def night_times(datestr):
     q1, q2, q3 = [ephem.Date(t_12start+x*length) for x in [0.25, 0.5, 0.75]]
     obs.horizon = -ephem.degrees('0')
     obs.date = t_sunset
-    t_moonset, t_moonrise = night_start_end(obs, ephem.Moon())
+    t_moonset, t_moonrise = night_start_end(obs, ephem.Moon(), sun=False)
+        
     print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
     print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
     print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
@@ -318,14 +321,13 @@ def slewtime(ra1, de1, ra2, de2):
 
 
 def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
-                       minmoonsep=40., optimize_ha=False):
+                       minmoonsep=40., optimize_ha=False, endobs=None):
     """date: UT; if time is not set, the next setting of the sun following start
     of that date is the start of the plan; awkward when the night starts just
     before midnight UT, as it does in March in Chile!
     """
 
-    # tonightsplan = OrderedDict()
-    tonightsplan = {}
+    tonightsplan = OrderedDict()
     orig_keys = survey_centers.keys()
     for key in orig_keys:
         tonightsplan[key] = []
@@ -342,8 +344,17 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
 
     # Get start and end time of night
     sn = obs.date
-    en = obs.next_rising(ephem.Sun())
-    lon = (en-sn) * days_to_s * nightfrac
+    if endobs is None:
+        en = obs.next_rising(ephem.Sun())
+    else:
+        en = endobs.date
+        if nightfrac != 1:
+            raise ValueError('nightfrac must be one with endobs')
+    lon = (en-sn) * days_to_s * np.abs(nightfrac)
+    if nightfrac < 0:
+        sn += (en-sn)*(1+nightfrac)
+        obs.date = sn
+        sn = obs.date
 
     # Make sure the Sun isn't up
     sun.compute(obs)
@@ -647,6 +658,7 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
         ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
         ax.set_ylabel('hour angle')
         ax.axhline(-5.25, color='red', linestyle='--')
+        ax.axhline( 5.25, color='red', linestyle='--')
 
     fig.subplots_adjust(hspace=0.5, wspace=0.3)
 
@@ -698,6 +710,8 @@ def main():
                         help='Split the plan up into N chunks.')
     parser.add_argument('--nightfrac', type=float, default=1.,
                         help='fraction of the night to plan')
+    parser.add_argument('--endtime', type=str, default=None,
+                        help='time of night to end, 00:00:00.00 (UT)')
     parser.add_argument('--moonsep', type=float, default=40.,
                         help='minimum moon separation to consider')
     parser.add_argument('--weatherfile', type=str, default='',
@@ -706,8 +720,16 @@ def main():
     parser.add_argument('--optimize_ha', dest='optimize_ha',
                         action='store_true',
                         help='optimize on hour angle, not airmass')
+    parser.add_argument('--exptimes', nargs="+", type=int,
+                        help='Exposure times for filters', default=[])
 
     args = parser.parse_args()
+    if len(args.exptimes) > 0:
+        print('changing default exposure times')
+        if len(args.exptimes) != len(args.filters):
+            raise ValueError('exptimes must have one entry for each filter')
+        for f, et in zip(args.filters, args.exptimes):
+            exp_time_filters[f] = et
 
     tilestable = readTilesTable(
         args.tilefile,
@@ -722,13 +744,21 @@ def main():
     obs = decam.copy()
     if args.time is None:
         obs.date = args.night
-        obs.date = obs.next_setting(ephem.Sun())
+        obs.date = obs.next_setting(ephem.Sun())+1e-6
     else:
         obs.date = args.night + ' ' + args.time
+    
+    endobs = None
+    if args.endtime is not None:
+        endobs = obs.copy()
+        endobs.date = args.night + ' ' + args.endtime
+        if endobs.date < obs.date:
+            endobs.date += 1
 
     plan = GetNightlyStrategy(obs, tilestable[1], args.filters, args.nightfrac,
                               minmoonsep=args.moonsep,
-                              optimize_ha=args.optimize_ha)
+                              optimize_ha=args.optimize_ha,
+                              endobs=endobs)
     plot_plan(plan, args.night, filename=args.outfile)
     WriteJSON(plan, args.outfile, chunks=args.chunks)
     write_plan_schedule(plan, args.outfile)
