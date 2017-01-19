@@ -66,7 +66,7 @@ import fnmatch
 import dateutil.parser
 import datetime
 from astropy.io import fits
-import fitsio
+# import fitsio
 
 
 # stolen from internet, Simon Brunning
@@ -120,9 +120,10 @@ def process(file, tdata, minexptime=25):
     qdone = False
     for i in xrange(5):
         try:
-            # hdr = fits.getheader(file)
-            hdr = fitsio.read_header(file)
+            hdr = fits.getheader(file)
+            # hdr = fitsio.read_header(file)
         except:
+            print('Exception')
             time.sleep(2)
         else:
             qdone = True
