@@ -62,6 +62,6 @@ def get_conditions(dat, badfile, fieldname=None):
                     val = dat[fieldname]
                 except:
                     val = dat[fieldname.upper()]
-                    m = (val >= start) & (val <= end)
-                    conditions[m, filt2ind[f]] = condition
+                m = (val >= start) & (val <= end)
+                conditions[m, filt2ind[f]] = condition
     return conditions

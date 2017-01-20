@@ -331,7 +331,7 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
 
 def slewtime(ra1, de1, ra2, de2):
     """Estimate slew time for slew from ra1, de1 to ra2, de2"""
-    return 3.*np.clip(gc_dist(ra1, de1, ra2, de2) - 2., 0., np.inf)
+    return 3.*np.clip(gc_dist(ra1, de1, ra2, de2) - 8., 0., np.inf)  # used to be -2, not -8
 
 
 def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
@@ -462,7 +462,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.00003*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.000003*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
