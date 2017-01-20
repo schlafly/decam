@@ -37,31 +37,36 @@ def get_conditions(dat, badfile, fieldname=None):
             field = 'expnum'
         except ValueError:
             pass
-        try:
-            start = Time(row['start'], format='isot', scale='utc')
-            end = Time(row['end'], format='isot', scale='utc')
-            start = start.mjd
-            end = end.mjd
-            field = 'mjd_obs'
-        except ValueError:
-            pass
-        if field is None:
+
+	try:
+        start = Time(row['start'], format='isot', scale='utc')
+        end = Time(row['end'], format='isot', scale='utc')
+        start = start.mjd
+        end = end.mjd
+        field = 'mjd_obs'
+    except ValueError:
+        pass
+
+	if field is None:
             raise ValueError('row format not understood: %s' % row)
         if start > end:
-            print(row)
             raise ValueError('file not understood, start > end')
-        condition = row['type'].strip()
-        if fieldname is not None:
-            val = dat[fieldname]
-            m = (val >= start) & (val <= end)
-            conditions[m] = condition
-        else:
-            for f in 'grizy':
-                fieldname = f+'_'+field
-                try:
-                    val = dat[fieldname]
-                except:
-                    val = dat[fieldname.upper()]
-                    m = (val >= start) & (val <= end)
-                    conditions[m, filt2ind[f]] = condition
+
+	condition = row['type'].strip()
+
+	if fieldname is not None:
+        val = dat[fieldname]
+        m = (val >= start) & (val <= end)
+        conditions[m] = condition
+    else:
+        for f in 'grizy':
+            fieldname = f+'_'+field
+            try:
+                val = dat[fieldname]
+            except:
+                val = dat[fieldname.upper()]
+
+	    m = (val >= start) & (val <= end)
+        conditions[m, filt2ind[f]] = condition
+
     return conditions

@@ -115,7 +115,7 @@ def night_times(datestr):
     obs.horizon = -ephem.degrees('0')
     obs.date = t_sunset
     t_moonset, t_moonrise = night_start_end(obs, ephem.Moon(), sun=False)
-        
+
     print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
     print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
     print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
@@ -270,14 +270,14 @@ def equgal(ra, dec):
 
 
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
-                   lbbounds=None, skypass=-1, skypassfilt=[], 
+                   lbbounds=None, skypass=-1, skypassfilt=[],
                    weatherfile=None, filters=''):
     tiles_in = fits.getdata(filename, 1)
 
     if weatherfile:
         import badweather
         badtiles = badweather.check_bad(tiles_in, weatherfile)
-        for filt, ind in zip('grizy', range(5)):
+	for filt, ind in zip('grizy', range(5)):
             tiles_in[filt+'_done'] = (
                 tiles_in[filt+'_done'] & (badtiles[:, ind] == 0))
 
@@ -622,7 +622,7 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
     fig.suptitle(r'$\mathrm{{ Plan \ for \ {} }}$'.format(date), fontsize=18)
 
     nrow = 3 + ('ha' in plan.dtype.names)
-    
+
     timerange = (np.min(plan['approx_time']), np.max(plan['approx_time']))
 
     for i, lb in enumerate([False, True]):
@@ -713,7 +713,7 @@ def main():
     parser.add_argument('--pass', type=int, default=1, dest='skypass',
                         help='Specify pass (dither) number (1,2, or 3); '
                         '0 implies all passes.')
-    parser.add_argument('--passfilt', nargs='+', type=int, default=[], 
+    parser.add_argument('--passfilt', nargs='+', type=int, default=[],
                         dest='skypassfilt',
                         help='Specify pass (dither) number (1,2, or 3); '
                         '0 implies all passes, for each filter (list)')
@@ -774,7 +774,7 @@ def main():
         obs.date = obs.next_setting(ephem.Sun())+1e-6
     else:
         obs.date = args.night + ' ' + args.time
-    
+
     endobs = None
     if args.endtime is not None:
         endobs = obs.copy()
@@ -787,7 +787,7 @@ def main():
                               optimize_ha=args.optimize_ha,
                               endobs=endobs)
     plot_plan(plan, args.night, filename=args.outfile)
-    WriteJSON(plan, args.outfile, chunks=args.chunks, 
+    WriteJSON(plan, args.outfile, chunks=args.chunks,
               chunk_size=args.chunk_size, propid=args.propid)
     write_plan_schedule(plan, args.outfile)
 
