@@ -37,7 +37,7 @@ def get_conditions(dat, badfile, fieldname=None):
             field = 'expnum'
         except ValueError:
             pass
-        try:
+	try:
             start = Time(row['start'], format='isot', scale='utc')
             end = Time(row['end'], format='isot', scale='utc')
             start = start.mjd
@@ -45,11 +45,12 @@ def get_conditions(dat, badfile, fieldname=None):
             field = 'mjd_obs'
         except ValueError:
             pass
-        if field is None:
+
+	if field is None:
             raise ValueError('row format not understood: %s' % row)
         if start > end:
-            print(row)
             raise ValueError('file not understood, start > end')
+
         condition = row['type'].strip()
         if fieldname is not None:
             val = dat[fieldname]
