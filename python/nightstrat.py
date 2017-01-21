@@ -478,7 +478,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.000003*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.000001*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
