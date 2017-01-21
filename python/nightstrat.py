@@ -115,7 +115,7 @@ def night_times(datestr):
     obs.horizon = -ephem.degrees('0')
     obs.date = t_sunset
     t_moonset, t_moonrise = night_start_end(obs, ephem.Moon(), sun=False)
-        
+
     print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
     print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
     print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
@@ -197,7 +197,7 @@ def gc_dist(lon1, lat1, lon2, lat2):
 
 
 #####################################################
-def WriteJSON(pl, fname, chunks=1):
+def WriteJSON(pl, fname, chunks=1, chunk_size=None, propid=None):
     # Convert the plan into a list of dictionaries
     n_exposures = len(pl['RA'])
 
@@ -216,6 +216,12 @@ def WriteJSON(pl, fname, chunks=1):
         for k in range(n_exposures)
     ])
 
+    if propid is not None:
+        for exp in exposure_list:
+            exp['propid'] = propid
+
+    if chunk_size is not None:
+        chunks = int(np.ceil(float(n_exposures) / chunk_size))
     # Write to JSON
     chunk_size = int(np.ceil(float(n_exposures) / float(chunks)))
 
@@ -264,13 +270,14 @@ def equgal(ra, dec):
 
 
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
-                   lbbounds=None, skypass=-1, weatherfile=None):
+                   lbbounds=None, skypass=-1, skypassfilt=[],
+                   weatherfile=None, filters=''):
     tiles_in = fits.getdata(filename, 1)
 
     if weatherfile:
         import badweather
         badtiles = badweather.check_bad(tiles_in, weatherfile)
-        for filt, ind in zip('grizy', range(5)):
+	for filt, ind in zip('grizy', range(5)):
             tiles_in[filt+'_done'] = (
                 tiles_in[filt+'_done'] & (badtiles[:, ind] == 0))
 
@@ -291,8 +298,15 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
     else:
         I = (tiles['IN_DECAPS'] & 2**0) != 0
 
-    if skypass > 0:
-        I = I & (tiles['PASS'] == skypass)
+    if len(skypassfilt) > 0:
+        for filt0, pass0 in zip(filters, skypassfilt):
+            # HACK: mark all tiles as "done" if they aren't in the desired
+            # pass for this filter.
+            if pass0 > 0:
+                tiles[(filt0+'_done').upper()][tiles['PASS'] != pass0] = 1
+    else:
+        if skypass > 0:
+            I = I & (tiles['PASS'] == skypass)
 
     if rdbounds is not None:
         I = (I & (tiles['RA'] > rdbounds[0]) & (tiles['RA'] <= rdbounds[1]) &
@@ -609,6 +623,8 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
 
     nrow = 3 + ('ha' in plan.dtype.names)
 
+    timerange = (np.min(plan['approx_time']), np.max(plan['approx_time']))
+
     for i, lb in enumerate([False, True]):
         ax = fig.add_subplot(nrow, 1, i+1)
 
@@ -641,7 +657,8 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
             m = plan['filter'] == f
             ax.scatter(coords[0][m], coords[1][m],
                        c=plan['approx_time'][m]-startday, edgecolor='none',
-                       marker=filter_symbols[f], facecolor='none', s=50)
+                       marker=filter_symbols[f], facecolor='none', s=50,
+                       vmin=timerange[0]-startday, vmax=timerange[1]-startday)
 
     ax = fig.add_subplot(nrow, 2, 5)
     ax.plot((plan['approx_time']-startday)*24., plan['airmass'])
@@ -696,6 +713,10 @@ def main():
     parser.add_argument('--pass', type=int, default=1, dest='skypass',
                         help='Specify pass (dither) number (1,2, or 3); '
                         '0 implies all passes.')
+    parser.add_argument('--passfilt', nargs='+', type=int, default=[],
+                        dest='skypassfilt',
+                        help='Specify pass (dither) number (1,2, or 3); '
+                        '0 implies all passes, for each filter (list)')
     parser.add_argument('--expand-footprint', action='store_true',
                         help='Use tiles outside nominal footprint')
     parser.add_argument(
@@ -708,6 +729,8 @@ def main():
               '(lmin, lmax, bmin, bmax)'))
     parser.add_argument('--chunks', metavar='N', type=int, default=1,
                         help='Split the plan up into N chunks.')
+    parser.add_argument('--chunk_size', metavar='N', type=int, default=None,
+                        help='Split the plan up into chunks of size N.')
     parser.add_argument('--nightfrac', type=float, default=1.,
                         help='fraction of the night to plan')
     parser.add_argument('--endtime', type=str, default=None,
@@ -722,6 +745,8 @@ def main():
                         help='optimize on hour angle, not airmass')
     parser.add_argument('--exptimes', nargs="+", type=int,
                         help='Exposure times for filters', default=[])
+    parser.add_argument('--propid', type=str, help='propid for observations',
+                        default=None)
 
     args = parser.parse_args()
     if len(args.exptimes) > 0:
@@ -737,7 +762,9 @@ def main():
         rdbounds=args.rd_bounds,
         lbbounds=args.lb_bounds,
         skypass=args.skypass,
-        weatherfile=args.weatherfile
+        skypassfilt=args.skypassfilt,
+        weatherfile=args.weatherfile,
+        filters=args.filters
     )
 
     # Set start time of observing plan
@@ -747,7 +774,7 @@ def main():
         obs.date = obs.next_setting(ephem.Sun())+1e-6
     else:
         obs.date = args.night + ' ' + args.time
-    
+
     endobs = None
     if args.endtime is not None:
         endobs = obs.copy()
@@ -760,7 +787,8 @@ def main():
                               optimize_ha=args.optimize_ha,
                               endobs=endobs)
     plot_plan(plan, args.night, filename=args.outfile)
-    WriteJSON(plan, args.outfile, chunks=args.chunks)
+    WriteJSON(plan, args.outfile, chunks=args.chunks,
+              chunk_size=args.chunk_size, propid=args.propid)
     write_plan_schedule(plan, args.outfile)
 
 
