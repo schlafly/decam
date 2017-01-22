@@ -269,6 +269,17 @@ def equgal(ra, dec):
     return l, b
 
 
+def extend_footprint_to_matches(tileids, infootprint):
+    # collect any pointings where not all three landed within the footprint
+    npointings = len(tileids) / 3
+    tileno = tileids % npointings
+    tilenoinpointing = tileno[infootprint]
+    for tileno0 in tilenoinpointing:
+        infootprint = infootprint | (tileno == tileno0)
+        # O(N^2), easy to speed up if necessary
+    return infootprint
+
+
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
                    lbbounds=None, skypass=-1, skypassfilt=[],
                    weatherfile=None, filters=''):
@@ -305,9 +316,13 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
             if pass0 > 0:
                 tiles[(filt0+'_done').upper()][tiles['PASS'] != pass0] = 1
     else:
-        if skypass > 0:
-            I = I & (tiles['PASS'] == skypass)
-
+        Ipass = np.zeros_like(I)
+        for skypass0 in skypass:
+            if skypass0 <= 0:
+                Ipass = Ipass | True
+            else:
+                Ipass = Ipass | (tiles['PASS'] == skypass0)
+        I = I & Ipass
     if rdbounds is not None:
         I = (I & (tiles['RA'] > rdbounds[0]) & (tiles['RA'] <= rdbounds[1]) &
              (tiles['DEC'] > rdbounds[2]) & (tiles['DEC'] <= rdbounds[3]))
@@ -315,10 +330,11 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
     if lbbounds is not None:
         lt, bt = equgal(tiles['RA'], tiles['DEC'])
         lt2 = ((lt + 180.) % 360.) - 180.
-        I = (I &
-             ((((lt > lbbounds[0]) & (lt <= lbbounds[1])) |
-              ((lt2 > lbbounds[0]) & (lt2 <= lbbounds[1]))) &
-              (bt > lbbounds[2]) & (bt <= lbbounds[3])))
+        Iin = ((((lt > lbbounds[0]) & (lt <= lbbounds[1])) |
+                ((lt2 > lbbounds[0]) & (lt2 <= lbbounds[1]))) &
+               (bt > lbbounds[2]) & (bt <= lbbounds[3]))
+        Iin = extend_footprint_to_matches(tiles['TILEID'], Iin)
+        I = I & Iin
 
     survey = OrderedDict([(k, v[I]) for k, v in tiles.items()])
 
@@ -331,7 +347,7 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
 
 def slewtime(ra1, de1, ra2, de2):
     """Estimate slew time for slew from ra1, de1 to ra2, de2"""
-    return 3.*np.clip(gc_dist(ra1, de1, ra2, de2) - 2., 0., np.inf)
+    return 3.*np.clip(gc_dist(ra1, de1, ra2, de2) - 2., 0., np.inf)  # used to be -2, not -8
 
 
 def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
@@ -462,7 +478,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.00003*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.000001*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
@@ -710,9 +726,9 @@ def main():
     parser.add_argument('outfile', type=str, help='filename to write')
     parser.add_argument('--time', '-t', type=str, default=None,
                         help='time of night to start, 00:00:00.00 (UT)')
-    parser.add_argument('--pass', type=int, default=1, dest='skypass',
+    parser.add_argument('--pass', nargs='+', type=int, default=[1], dest='skypass',
                         help='Specify pass (dither) number (1,2, or 3); '
-                        '0 implies all passes.')
+                        '0 implies all passes, or can be a list.')
     parser.add_argument('--passfilt', nargs='+', type=int, default=[],
                         dest='skypassfilt',
                         help='Specify pass (dither) number (1,2, or 3); '
