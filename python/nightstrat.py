@@ -233,7 +233,8 @@ def WriteJSON(pl, fname, chunks=1, chunk_size=None, propid=None):
         f.close()
 
 
-def gen_decam_json(ra, dec, filters, obj_name, fname, dither=False):
+def gen_decam_json(ra, dec, filters, obj_name, fname, dither=False,
+                   propid=None):
     exposures = []
 
     if dither:
@@ -247,14 +248,17 @@ def gen_decam_json(ra, dec, filters, obj_name, fname, dither=False):
 
     for filt in filters:
         for da, dd in zip(d_ra, d_dec):
-            exposures.append({
+            texp = {
                 'expType': 'object',
                 'object': 'DECaPS_{:s}_{:s}'.format(obj_name, filt),
                 'expTime': 30.,
                 'filter': filt,
                 'RA': np.mod(ra+da, 360.),
                 'dec': dec+dd
-            })
+            }
+            if propid is not None:
+                texp['propid'] = propid
+            exposures.append(texp)
 
     f = open(fname, 'w')
     json.dump(exposures, f, indent=2, separators=(',', ': '))
@@ -308,6 +312,11 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
         I = (tiles['IN_DECAPS'] & 2**1) != 0
     else:
         I = (tiles['IN_DECAPS'] & 2**0) != 0
+        # even if we don't expand the footprint, collect areas where we've
+        # gotten some imaging already?
+        for f in 'GRIZY':
+            I = I | (tiles[f+'_DONE'] != 0)
+        I = extend_footprint_to_matches(tiles['TILEID'], I)
 
     if len(skypassfilt) > 0:
         for filt0, pass0 in zip(filters, skypassfilt):
@@ -324,8 +333,10 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
                 Ipass = Ipass | (tiles['PASS'] == skypass0)
         I = I & Ipass
     if rdbounds is not None:
-        I = (I & (tiles['RA'] > rdbounds[0]) & (tiles['RA'] <= rdbounds[1]) &
-             (tiles['DEC'] > rdbounds[2]) & (tiles['DEC'] <= rdbounds[3]))
+        Iin = ((tiles['RA'] > rdbounds[0]) & (tiles['RA'] <= rdbounds[1]) &
+               (tiles['DEC'] > rdbounds[2]) & (tiles['DEC'] <= rdbounds[3]))
+        Iin = extend_footprint_to_matches(tiles['TILEID'], Iin)
+        I = I & Iin
 
     if lbbounds is not None:
         lt, bt = equgal(tiles['RA'], tiles['DEC'])
@@ -478,7 +489,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.000001*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.000005*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,

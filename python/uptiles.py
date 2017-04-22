@@ -169,7 +169,7 @@ def process(file, tdata, minexptime=25):
     if filt not in 'grizy':
         print('Invalid filter %s' % filt)
         return
-    if tdata[filt+'_mjd_obs'][ind] > mjd_obs:
+    if tdata[filt+'_mjd_obs'][ind] >= mjd_obs-1./24./60./60.:
         print('Ignoring TILEID=%d FILTER=%s MJD=%f; older than existing tile.'
               % (tileid, filt, mjd_obs))
         print(mjd_obs, tdata[filt+'_mjd_obs'][ind])
