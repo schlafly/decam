@@ -1,0 +1,24 @@
+# moved during exposure
+641444
+
+# bright sky
+641855
+641856
+641857
+
+# bad seeing, only 7 of these are marked as done in tilefile.
+566933
+528228
+567614
+567282
+566871
+567230
+567378
+567283
+566928
+526946
+567231
+567287
+567254
+568169
+527038
