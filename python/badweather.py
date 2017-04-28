@@ -42,7 +42,7 @@ def check_bad(dat, badfile, fieldname=None):
 def get_conditions(dat, badfile, fieldname=None):
     badlist = ascii.read(badfile, delimiter=',')
     if fieldname is None:
-        conditions = numpy.zeros((len(dat), 5), dtype='a200')
+        conditions = numpy.zeros((len(dat), 5), dtype='a20')
     else:
         conditions = numpy.zeros(len(dat), dtype='a20')
     for row in badlist:
@@ -74,11 +74,11 @@ def get_conditions(dat, badfile, fieldname=None):
             conditions[m] = condition
         else:
             for f in 'grizy':
-                fieldname = f+'_'+field
+                fn = f+'_'+field
                 try:
-                    val = dat[fieldname]
+                    val = dat[fn]
                 except:
-                    val = dat[fieldname.upper()]
+                    val = dat[fn.upper()]
                 m = (val >= start) & (val <= end)
                 conditions[m, filt2ind[f]] = condition
     return conditions
