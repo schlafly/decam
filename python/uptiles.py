@@ -222,3 +222,24 @@ def update(expr='*/*_ooi_*.fits.fz', topdir=None, tfile=None, wtime=None,
             break
         else:
             time.sleep(wtime)
+
+
+def main():
+    from argparse import ArgumentParser
+    parser = ArgumentParser(
+        description='Update tile file, which logs which tiles have been observed.',
+        add_help=True)
+    parser.add_argument('--expr', type=str, default='*/*_ooi_*.fits.fz', help='Filename pattern for DECam image files.')
+    parser.add_argument('--topdir', type=str, help='Top directory for DECam image files.')
+    parser.add_argument('--tfile', type=str, help='Filename of tile file.')
+    parser.add_argument('--wtime', type=float, help='Time (in seconds) to wait before checking again for new images.')
+    parser.add_argument('--noloop', action='store_true', help='Only check once for new files, then quit.')
+    parser.add_argument('--debug', action='store_true', help='Print extra debugging information.')
+    args = parser.parse_args()
+    update(**vars(args))
+    
+    return 0
+
+
+if __name__ == '__main__':
+    main()
