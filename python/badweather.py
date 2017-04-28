@@ -18,9 +18,25 @@ from astropy.time import Time
 filt2ind = {'g': 0, 'r': 1, 'i': 2, 'z': 3, 'y': 4}
 
 
+def check_badexp(tiles, badexpfn=None):
+    if badexpfn is None:
+        import os
+        badexpfn = os.path.join(os.environ['DECAM_DIR'], 'data', 'badexp.txt')
+    from astropy.io import ascii
+    badexp = ascii.read(badexpfn, names=['expnum']).as_array()['expnum']
+    res = numpy.zeros((len(tiles), 5), dtype='bool')
+    for badexpnum in badexp:
+        for i, f in enumerate('grizy'):
+            m = numpy.flatnonzero((tiles[f+'_expnum'] == badexpnum) & 
+                               (tiles[f+'_done'] == 1))
+            if len(m) > 0:
+                res[m, i] = 1
+    return res
+
+
 def check_bad(dat, badfile, fieldname=None):
     conditions = get_conditions(dat, badfile, fieldname=fieldname)
-    return conditions == 'bad'
+    return (conditions == 'bad') | (conditions == 'marginal')
 
 
 def get_conditions(dat, badfile, fieldname=None):
