@@ -34,15 +34,19 @@ def check_badexp(tiles, badexpfn=None):
     return res
 
 
-def check_bad(dat, badfile, fieldname=None):
+def check_bad(dat, badfile, fieldname=None, reject=('bad', 'marginal')):
     conditions = get_conditions(dat, badfile, fieldname=fieldname)
-    return (conditions == 'bad') | (conditions == 'marginal')
+    bad = numpy.zeros(conditions.shape, dtype=numpy.bool)
+    for cond in reject:
+        bad |= (conditions == cond)
+    return bad
+    #return (conditions == 'bad') | (conditions == 'marginal')
 
 
 def get_conditions(dat, badfile, fieldname=None):
     badlist = ascii.read(badfile, delimiter=',')
     if fieldname is None:
-        conditions = numpy.zeros((len(dat), 5), dtype='a200')
+        conditions = numpy.zeros((len(dat), 5), dtype='a20')
     else:
         conditions = numpy.zeros(len(dat), dtype='a20')
     for row in badlist:
@@ -74,11 +78,11 @@ def get_conditions(dat, badfile, fieldname=None):
             conditions[m] = condition
         else:
             for f in 'grizy':
-                fieldname = f+'_'+field
+                fn = f+'_'+field
                 try:
-                    val = dat[fieldname]
+                    val = dat[fn]
                 except:
-                    val = dat[fieldname.upper()]
+                    val = dat[fn.upper()]
                 m = (val >= start) & (val <= end)
                 conditions[m, filt2ind[f]] = condition
     return conditions
