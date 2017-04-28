@@ -11,6 +11,7 @@ from __future__ import print_function, division
 
 from argparse import ArgumentParser
 from glob import glob
+import os
 import textwrap
 import json
 
@@ -21,6 +22,11 @@ import matplotlib.patches as patches
 import astropy.io.fits as fits
 from astropy.coordinates import SkyCoord
 
+import badweather
+
+
+script_dir = os.path.dirname(os.path.realpath(__file__))
+
 
 def plot_circles(ax, x, y, radius, **kwargs):
     if not hasattr(radius, '__len__'):
@@ -29,7 +35,6 @@ def plot_circles(ax, x, y, radius, **kwargs):
     for xx,yy,rr in zip(x,y,radius):
         circle = patches.Circle((xx,yy), radius=rr, **kwargs)
         ax.add_patch(circle)
-
 
 
 def main():
@@ -68,6 +73,22 @@ def main():
         '--decaps-extended-only',
         action='store_true',
         help='Plot only tiles in extended DECaPS footprint.')
+    parser.add_argument(
+        '--weather',
+        type=str,
+        default=os.path.join(script_dir, '..', 'data', 'badweather.txt'),
+        help='File containing weather information.')
+    parser.add_argument(
+        '--reject-conditions',
+        type=str,
+        nargs='+',
+        default=('bad', 'marginal'),
+        help='Reject exposures taken under the given weather conditions.')
+    parser.add_argument(
+        '--bad-exposures',
+        type=str,
+        default=os.path.join(script_dir, '..', 'data', 'badexp.txt'),
+        help='File containing indices of bad exposures.')
     args = parser.parse_args()
 
     # Expand plan filenames
@@ -99,50 +120,61 @@ def main():
     n_bands = len(bands)
 
     with fits.open(args.tilefile) as hdulist:
-        # print('\n'.join(textwrap.wrap(str(hdulist[1].header), 80)))
+        data = hdulist[1].data[:]
+        
+    badtiles = badweather.check_badexp(data, badexpfn=args.bad_exposures)
+    
+    if args.weather is not None:
+        badtiles = badtiles | badweather.check_bad(data, args.weather, reject=args.reject_conditions)
+    
+    for k,filt in enumerate('grizy'):
+        data[filt+'_done'] = (
+            data[filt+'_done'] & (badtiles[:, k] == 0))
+    
+    print('\n'.join(textwrap.wrap(str(hdulist[1].header), 80)))
 
-        n_decaps_tiles = np.sum(hdulist[1].data['in_decaps'] == 1)
+    n_decaps_tiles = np.sum(data['in_decaps'] == 1)
 
-        tile_id = hdulist[1].data['tileid'][:]
-        tile_sort_idx = np.argsort(tile_id)
+    tile_id = data['tileid'][:]
+    tile_sort_idx = np.argsort(tile_id)
 
-        idx_footprint = np.zeros((len(hdulist[1].data)), dtype='bool')
-        idx_planned = np.zeros((len(hdulist[1].data),n_bands), dtype='bool')
-        idx_observed = np.empty((len(hdulist[1].data),n_bands), dtype='bool')
-        pct_observed = np.empty(len(bands), dtype='f8')
+    idx_footprint = np.zeros((len(data)), dtype='bool')
+    idx_planned = np.zeros((len(data),n_bands), dtype='bool')
+    idx_observed = np.empty((len(data),n_bands), dtype='bool')
+    pct_observed = np.empty(len(bands), dtype='f8')
 
-        if args.pass_num:
-            for p in args.pass_num:
-                idx_footprint |= (hdulist[1].data['pass'] == p)
-        else:
-            idx_footprint[:] = 1
+    if args.pass_num:
+        for p in args.pass_num:
+            idx_footprint |= (data['pass'] == p)
+    else:
+        idx_footprint[:] = 1
 
-        if args.decaps_only:
-            # print(np.unique(hdulist[1].data['in_decaps']))
-            idx_footprint &= (hdulist[1].data['in_decaps'] == 3)
+    if args.decaps_only:
+        # print(np.unique(data['in_decaps']))
+        idx_footprint &= (data['in_decaps'] == 3)
 
-        if args.decaps_extended_only:
-            idx_footprint &= (hdulist[1].data['in_decaps'] != 0)
+    if args.decaps_extended_only:
+        idx_footprint &= (data['in_decaps'] != 0)
 
-        for i,b in enumerate(bands):
-            idx_observed[:,i] = hdulist[1].data['{}_done'.format(b)]
+    for i,b in enumerate(bands):
+        idx_observed[:,i] = data['{}_done'.format(b)]
 
-            k_insert = np.searchsorted(
-                tile_id,
-                plan_tiles[b],
-                sorter=tile_sort_idx)
-            k_insert[k_insert == len(tile_id)] = -1
-            idx_match = (tile_id[k_insert] == plan_tiles[b])
-            idx_planned[k_insert[idx_match],i] = 1
+        k_insert = np.searchsorted(
+            tile_id,
+            plan_tiles[b],
+            sorter=tile_sort_idx)
+        k_insert[k_insert == len(tile_id)] = -1
+        idx_match = (tile_id[k_insert] == plan_tiles[b])
+        idx_planned[k_insert[idx_match],i] = 1
 
-            pct_observed[i] = 100. * np.count_nonzero(idx_observed[:,i] & idx_footprint) / np.count_nonzero(idx_footprint)
-            print('{}: {:.1f}% observed'.format(b, pct_observed[i]))
+        pct_observed[i] = 100. * np.count_nonzero(idx_observed[:,i] & idx_footprint) / np.count_nonzero(idx_footprint)
+        print('{}: {:.1f}% observed'.format(b, pct_observed[i]))
 
-        coords = SkyCoord(
-            hdulist[1].data['ra'],
-            hdulist[1].data['dec'],
-            frame='icrs',
-            unit='deg')
+    coords = SkyCoord(
+        data['ra'],
+        data['dec'],
+        frame='icrs',
+        unit='deg')
 
     # Set up the figure
     fig = plt.figure(figsize=(8,2*n_bands), dpi=100)

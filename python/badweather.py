@@ -34,9 +34,13 @@ def check_badexp(tiles, badexpfn=None):
     return res
 
 
-def check_bad(dat, badfile, fieldname=None):
+def check_bad(dat, badfile, fieldname=None, reject=('bad', 'marginal')):
     conditions = get_conditions(dat, badfile, fieldname=fieldname)
-    return (conditions == 'bad') | (conditions == 'marginal')
+    bad = numpy.zeros(conditions.shape, dtype=numpy.bool)
+    for cond in reject:
+        bad |= (conditions == cond)
+    return bad
+    #return (conditions == 'bad') | (conditions == 'marginal')
 
 
 def get_conditions(dat, badfile, fieldname=None):
