@@ -286,7 +286,7 @@ def extend_footprint_to_matches(tileids, infootprint):
 
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
                    lbbounds=None, skypass=-1, skypassfilt=[],
-                   weatherfile=None, filters=''):
+                   weatherfile=None, filters='', exclude_nominal=False):
     tiles_in = fits.getdata(filename, 1)
 
     if weatherfile:
@@ -311,6 +311,8 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
     # Cut to tiles of interest:
     if expand_footprint:
         I = (tiles['IN_DECAPS'] & 2**1) != 0
+        if exclude_nominal:
+            I &= (tiles['IN_DECAPS'] & 2**0) == 0
     else:
         I = (tiles['IN_DECAPS'] & 2**0) != 0
         # even if we don't expand the footprint, collect areas where we've
@@ -490,7 +492,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.000005*slew - 1.e10*exclude)
+        nexttile = np.argmax(dairmass - 0.0000002*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
@@ -747,6 +749,8 @@ def main():
                         '0 implies all passes, for each filter (list)')
     parser.add_argument('--expand-footprint', action='store_true',
                         help='Use tiles outside nominal footprint')
+    parser.add_argument('--exclude-nominal', action='store_true',
+                        help='Exclude tiles inside nominal footprint')
     parser.add_argument(
         '--rd-bounds', metavar='deg', type=float, nargs=4, default=None,
         help=('use only tiles in ra/dec range, specified as '
@@ -787,6 +791,7 @@ def main():
     tilestable = readTilesTable(
         args.tilefile,
         expand_footprint=args.expand_footprint,
+        exclude_nominal=args.exclude_nominal,
         rdbounds=args.rd_bounds,
         lbbounds=args.lb_bounds,
         skypass=args.skypass,
