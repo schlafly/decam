@@ -273,6 +273,24 @@ def equgal(ra, dec):
     return l, b
 
 
+def canonical_tile_rd(alltiles):
+    ra = np.zeros_like(alltiles['RA'])
+    dec = np.zeros_like(alltiles['DEC'])
+    npointings = len(alltiles['RA']) / 3
+    allcanonicaltileid = alltiles['TILEID'] % npointings
+    mcanon = alltiles['PASS'] == 1
+    canontileid = allcanonicaltileid[mcanon]
+    canonra = alltiles['RA'][mcanon]
+    canondec = alltiles['DEC'][mcanon]
+    s = np.argsort(canontileid)
+    ind = np.searchsorted(canontileid[s], allcanonicaltileid, 
+                          side='left')
+    if np.any((ind < 0) | (ind > len(s))):
+        pdb.set_trace()
+    assert np.all(canontileid[s][ind] == allcanonicaltileid)
+    return canonra[s][ind], canondec[s][ind]
+
+
 def extend_footprint_to_matches(tileids, infootprint):
     # collect any pointings where not all three landed within the footprint
     npointings = len(tileids) / 3
@@ -335,19 +353,19 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
             else:
                 Ipass = Ipass | (tiles['PASS'] == skypass0)
         I = I & Ipass
+
+    ctiler, ctiled = canonical_tile_rd(tiles)
     if rdbounds is not None:
-        Iin = ((tiles['RA'] > rdbounds[0]) & (tiles['RA'] <= rdbounds[1]) &
-               (tiles['DEC'] > rdbounds[2]) & (tiles['DEC'] <= rdbounds[3]))
-        Iin = extend_footprint_to_matches(tiles['TILEID'], Iin)
+        Iin = ((ctiler > rdbounds[0]) & (ctiler <= rdbounds[1]) &
+               (ctiled > rdbounds[2]) & (ctiled <= rdbounds[3]))
         I = I & Iin
 
     if lbbounds is not None:
-        lt, bt = equgal(tiles['RA'], tiles['DEC'])
+        lt, bt = equgal(ctiler, ctiled)
         lt2 = ((lt + 180.) % 360.) - 180.
         Iin = ((((lt > lbbounds[0]) & (lt <= lbbounds[1])) |
                 ((lt2 > lbbounds[0]) & (lt2 <= lbbounds[1]))) &
                (bt > lbbounds[2]) & (bt <= lbbounds[3]))
-        Iin = extend_footprint_to_matches(tiles['TILEID'], Iin)
         I = I & Iin
 
     survey = OrderedDict([(k, v[I]) for k, v in tiles.items()])
