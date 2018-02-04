@@ -218,9 +218,12 @@ def update(expr='*/*_ooi_*.fits.fz', topdir=None, tfile=None, wtime=None,
             if not debug:
                 write(tdata, tfile)
             nfile = len(files)
+        else:
+            print('No no files found.')
         if noloop:
             break
         else:
+            print('Sleeping ...')
             time.sleep(wtime)
 
 
