@@ -510,7 +510,8 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
             slew = 0
 
         # Select tile based on airmass rate of change and slew time
-        nexttile = np.argmax(dairmass - 0.0000002*slew - 1.e10*exclude)
+        slewfac = 7e-7 # higher -> fewer slews
+        nexttile = np.argmax(dairmass - slewfac*slew - 1.e10*exclude)
 
         delta_t, n_exp = pointing_plan(
             tonightsplan,
@@ -530,7 +531,7 @@ def GetNightlyStrategy(obs, survey_centers, filters, nightfrac=1.,
                             tonightsplan['RA'][-n_exp-1],
                             tonightsplan['DEC'][-n_exp-1])
             time_elapsed += slew
-            if slew > 0:
+            if slew > 20:
                 print 'time spent slewing: {:.1f}'.format(slew)
 
     numleft = np.sum(exclude == 0)
@@ -588,7 +589,7 @@ def pointing_plan(tonightsplan, orig_keys, survey_centers, nexttile, filters,
         tonightsplan['exp_time'].append(exp_time_filters[f])
         tonightsplan['approx_datetime'].append(obs.date)
         tonightsplan['airmass'].append(airm)
-        ha = survey_centers['RA'][nexttile] - np.degrees(obs.sidereal_time())
+        ha = -survey_centers['RA'][nexttile] + np.degrees(obs.sidereal_time())
         tonightsplan['ha'].append(ha/15.)
         tonightsplan['approx_time'].append(obs.date)
         tonightsplan['filter'].append(f)
