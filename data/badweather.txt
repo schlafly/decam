@@ -86,3 +86,11 @@ start, end, type
 # Everything before here commented out, since we should have addressed
 # any bad weather in the tile file.
 
+#
+# 2018 A
+#
+
+# Feb 2-3
+2018-02-03T07:25:00, 2018-02-03T12:00:00, bad
+#2018-02-04T08:15:00, 2018-02-04T09:15:00, marginal
+2018-02-04T09:15:00, 2018-02-04T12:00:00, bad
