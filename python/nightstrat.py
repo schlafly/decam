@@ -98,7 +98,7 @@ def night_start_end(obs, obj=None, sun=True):
     return t_start, t_end
 
 
-def night_times(datestr):
+def night_times(datestr, verbose=True):
     obs = decam.copy()
     obs.date = datestr
     obs.horizon = 0.0
@@ -115,15 +115,30 @@ def night_times(datestr):
     obs.horizon = -ephem.degrees('0')
     obs.date = t_sunset
     t_moonset, t_moonrise = night_start_end(obs, ephem.Moon(), sun=False)
+    
+    if verbose:
+        print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
+        print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
+        print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
+        print('18 twi start: %s, 18 twi end: %s' % (t_18start, t_18stop))
+        print('moonset:      %s, moonrise:   %s' % (t_moonset, t_moonrise))
+        print('Q1:           %s' % q1)
+        print('Q2:           %s' % q2)
+        print('Q3:           %s' % q3)
 
-    print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
-    print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
-    print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
-    print('18 twi start: %s, 18 twi end: %s' % (t_18start, t_18stop))
-    print('moonset:      %s, moonrise:   %s' % (t_moonset, t_moonrise))
-    print('Q1:           %s' % q1)
-    print('Q2:           %s' % q2)
-    print('Q3:           %s' % q3)
+    return {'sunset': t_sunset,
+            'sunrise': t_sunrise,
+            '10start': t_10start,
+            '10stop': t_10stop,
+            '12start': t_12start,
+            '12stop': t_12stop,
+            '18start': t_18start,
+            '18stop': t_18stop,
+            'moonset': t_moonset,
+            'moonrise': t_moonrise,
+            'q1': q1,
+            'q2': q2,
+            'q3': q3}
 
 #####################################################
 # Misc.
@@ -665,6 +680,7 @@ def json_to_survey_centers(json):
 
 def plot_plan(plan, date, survey_centers=None, filename=None):
     from matplotlib import pyplot as plt
+    import matplotlib.ticker as ticker
 
     fig = plt.figure()
 
@@ -673,7 +689,12 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
     nrow = 3 + ('ha' in plan.dtype.names)
 
     timerange = (np.min(plan['approx_time']), np.max(plan['approx_time']))
-
+    
+    print(date)
+    print('{} 12:00:00'.format(str(date).replace('-', '/')))
+    time_dict = night_times('{} 12:00:00'.format(str(date).replace('-', '/')))
+    
+    # Exposures in (RA,Dec) and (l,b)
     for i, lb in enumerate([False, True]):
         ax = fig.add_subplot(nrow, 1, i+1)
 
@@ -708,23 +729,69 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
                        c=plan['approx_time'][m]-startday, edgecolor='none',
                        marker=filter_symbols[f], facecolor='none', s=50,
                        vmin=timerange[0]-startday, vmax=timerange[1]-startday)
+        
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(8))
+        ax.yaxis.set_major_locator(ticker.MaxNLocator(4))
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+    
+    elapsed_str = (
+        r'$\mathrm{{hours\ since\ sunset}} \ ' +
+        r'\left( \mathtt{{ {} \ UT }} \right)$'
+        ).format(str(time_dict['sunset']).replace(' ', r'\ \ ').replace(':', '\! : \!'))
+    xlabel = r'$\mathrm{hours\ since\ sunset}$'
+    
+    t0 = time_dict['sunset']
 
+    def draw_times(a):
+        xlim = a.get_xlim()
+
+        specs = [
+            (time_dict['12start']-1., time_dict['12start'], dict(facecolor='gold', edgecolor='none', alpha=0.25)),
+            (time_dict['12start'], time_dict['18start'], dict(facecolor='gold', edgecolor='none', alpha=0.10)),
+            (time_dict['12stop'], time_dict['18stop'], dict(facecolor='gold', edgecolor='none', alpha=0.10)),
+            (time_dict['12stop'], time_dict['12stop']+1., dict(facecolor='gold', edgecolor='none', alpha=0.25)),
+            (time_dict['moonset']-1, time_dict['moonset'], dict(facecolor='k', edgecolor='none', alpha=0.10)),
+            (time_dict['moonrise'], time_dict['moonrise']+1, dict(facecolor='k', edgecolor='none', alpha=0.10)),
+        ]
+
+        for s in specs:
+            a.axvspan(24*(s[0]-t0), 24*(s[1]-t0), **s[2])
+
+        a.set_xlim(xlim)
+
+    # Airmass
     ax = fig.add_subplot(nrow, 2, 5)
-    ax.plot((plan['approx_time']-startday)*24., plan['airmass'])
-    ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
-    ax.set_ylabel('airmass')
-    ax = fig.add_subplot(nrow, 2, 6)
-    ax.plot(24.*(plan['approx_time']-startday), np.degrees(plan['moon_sep']))
-    ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
-    ax.set_ylabel('moon separation')
+    ax.plot((plan['approx_time']-time_dict['sunset'])*24., plan['airmass'])
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r'$\mathrm{airmass}$')
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+    draw_times(ax)
 
+    # Moon separation
+    ax = fig.add_subplot(nrow, 2, 6)
+    ax.plot(24.*(plan['approx_time']-time_dict['sunset']), np.degrees(plan['moon_sep']))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r'$\mathrm{moon\ sep.}$')
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(5))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+    draw_times(ax)
+    
+    # Hour angle
     if 'ha' in plan.dtype.names:
         ax = fig.add_subplot(nrow, 1, nrow)
-        ax.plot(24.*(plan['approx_time']-startday), plan['ha'])
-        ax.set_xlabel('hours since {} UT'.format(ephem.Date(startday)))
-        ax.set_ylabel('hour angle')
+        ax.plot(24.*(plan['approx_time']-time_dict['sunset']), plan['ha'])
+        ax.set_xlabel(elapsed_str)
+        ax.set_ylabel(r'$\mathrm{hour\ angle}$')
         ax.axhline(-5.25, color='red', linestyle='--')
         ax.axhline( 5.25, color='red', linestyle='--')
+        ax.yaxis.set_major_locator(ticker.MaxNLocator(5))
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+        draw_times(ax)
 
     fig.subplots_adjust(hspace=0.5, wspace=0.3)
 
@@ -819,20 +886,32 @@ def main():
         filters=args.filters
     )
 
+    def set_obs_time(obs, start_date, time):
+        if time.startswith('+'):
+            t_delta = 1.
+            time = time.replace('+', '')
+        else:
+            t_delta = 0.
+
+        obs.date = start_date + ' ' + time.lstrip()
+        obs.date += t_delta
+
     # Set start time of observing plan
     obs = decam.copy()
     if args.time is None:
-        obs.date = args.night
+        obs.date = args.night + ' 12:00:00'
         obs.date = obs.next_setting(ephem.Sun())+1e-6
     else:
-        obs.date = args.night + ' ' + args.time
+        set_obs_time(obs, args.night, args.time)
+        #obs.date = args.night + ' ' + args.time
 
     endobs = None
     if args.endtime is not None:
         endobs = obs.copy()
-        endobs.date = args.night + ' ' + args.endtime
+        set_obs_time(endobs, args.night, args.endtime)
+        #endobs.date = args.night + ' ' + args.endtime
         if endobs.date < obs.date:
-            endobs.date += 1
+            endobs.date += 1.
 
     plan = GetNightlyStrategy(obs, tilestable[1], args.filters, args.nightfrac,
                               minmoonsep=args.moonsep,
