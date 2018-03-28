@@ -98,6 +98,50 @@ def night_start_end(obs, obj=None, sun=True):
     return t_start, t_end
 
 
+def get_up_times(obs, obj, start_time='sunset', end_time='sunrise', horizon=None):
+    obs = obs.copy()
+    
+    if horizon is None:
+        obs.horizon = ephem.degrees('00:00:00')
+    else:
+        obs.horizon = horizon
+    
+    t_night_start, t_night_end = night_start_end(obs)
+    
+    if start_time == 'sunset':
+        obs.date = t_night_start
+    else:
+        obs.date = start_time
+    
+    if end_time == 'sunrise':
+        t_end = t_night_end
+    else:
+        t_end = end_time
+    
+    up_times = []
+    
+    # Is the object up now?
+    t_set = obs.previous_setting(obj)
+    t_rise = obs.previous_rising(obj)
+    if t_rise > t_set:
+        t_set = obs.next_setting(obj)
+        up_times.append((t_rise, t_set))
+    
+    # Advance t_rise to next rising
+    obs.date = t_set
+    t_rise = obs.next_rising(obj)
+    
+    # Keep adding (t_rise, t_set) pairs until next t_rise exceeds t_end
+    while t_rise < t_end:
+        t_set = obs.next_setting(obj)
+        up_times.append((t_rise, t_set))
+        
+        obs.date = t_set
+        t_rise = obs.next_rising(obj)
+    
+    return up_times
+
+
 def night_times(datestr, verbose=True):
     obs = decam.copy()
     obs.date = datestr
@@ -113,15 +157,16 @@ def night_times(datestr, verbose=True):
     length = t_12stop - t_12start
     q1, q2, q3 = [ephem.Date(t_12start+x*length) for x in [0.25, 0.5, 0.75]]
     obs.horizon = -ephem.degrees('0')
-    obs.date = t_sunset
-    t_moonset, t_moonrise = night_start_end(obs, ephem.Moon(), sun=False)
+    obs.date = datestr
+    t_moon_up = get_up_times(obs, ephem.Moon())
     
     if verbose:
         print('Sunset:       %s, Sunrise:    %s' % (t_sunset, t_sunrise))
         print('10 twi start: %s, 10 twi end: %s' % (t_10start, t_10stop))
         print('12 twi start: %s, 12 twi end: %s' % (t_12start, t_12stop))
         print('18 twi start: %s, 18 twi end: %s' % (t_18start, t_18stop))
-        print('moonset:      %s, moonrise:   %s' % (t_moonset, t_moonrise))
+        for t0,t1 in t_moon_up:
+            print('Moon- (rise, set): {} {}'.format(t0, t1))
         print('Q1:           %s' % q1)
         print('Q2:           %s' % q2)
         print('Q3:           %s' % q3)
@@ -134,8 +179,7 @@ def night_times(datestr, verbose=True):
             '12stop': t_12stop,
             '18start': t_18start,
             '18stop': t_18stop,
-            'moonset': t_moonset,
-            'moonrise': t_moonrise,
+            'moonup': t_moon_up,
             'q1': q1,
             'q2': q2,
             'q3': q3}
@@ -682,7 +726,7 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
     from matplotlib import pyplot as plt
     import matplotlib.ticker as ticker
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8,9))
 
     fig.suptitle(r'$\mathrm{{ Plan \ for \ {} }}$'.format(date), fontsize=18)
 
@@ -754,9 +798,13 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
             (time_dict['12start'], time_dict['18start'], dict(facecolor='gold', edgecolor='none', alpha=0.10)),
             (time_dict['12stop'], time_dict['18stop'], dict(facecolor='gold', edgecolor='none', alpha=0.10)),
             (time_dict['12stop'], time_dict['12stop']+1., dict(facecolor='gold', edgecolor='none', alpha=0.25)),
-            (time_dict['moonset']-1, time_dict['moonset'], dict(facecolor='k', edgecolor='none', alpha=0.10)),
-            (time_dict['moonrise'], time_dict['moonrise']+1, dict(facecolor='k', edgecolor='none', alpha=0.10)),
         ]
+        
+        for t0_moon, t1_moon in time_dict['moonup']:
+            specs.append((
+                t0_moon, t1_moon,
+                dict(facecolor='k', edgecolor='none', alpha=0.10)
+            ))
 
         for s in specs:
             a.axvspan(24*(s[0]-t0), 24*(s[1]-t0), **s[2])
