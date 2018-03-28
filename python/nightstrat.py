@@ -730,6 +730,9 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
                        marker=filter_symbols[f], facecolor='none', s=50,
                        vmin=timerange[0]-startday, vmax=timerange[1]-startday)
         
+        xlim = ax.get_xlim()
+        ax.set_xlim(xlim[::-1])
+        
         ax.xaxis.set_major_locator(ticker.MaxNLocator(8))
         ax.yaxis.set_major_locator(ticker.MaxNLocator(4))
         ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
