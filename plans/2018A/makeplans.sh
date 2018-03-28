@@ -13,25 +13,45 @@ BADEXP=$DECAM_DIR/data/badexp.txt
 #python $NIGHTSTRAT 2018-02-04 $TILEFILE izY plan20180203_1_2izY --pass 2 --lb-bounds -80 -53 -20 20 --weatherfile $WEATHERFILE --nightfrac -0.5 --expand-footprint --optimize_ha  # intentional 02-03 for Feb 2; this half night starts on Feb 3 UT
 
 
-# 02-25: full night. moonset at 06:39, roughly Q3.
+# 02-25: full night. moonset at 06:39, roughly Q3. 18-deg twilight at 09:07.
 # 02-26: full night. moonset at 07:43, roughly Q3.
 # 02-27: full night. moonset at 08:50, ~end of night.
 
 # okay, so continue izY on similar footprints until moonset, then gr on original footprint?
 
 # 02-25
-python $NIGHTSTRAT 2018-02-25 $TILEFILE izY plan20180225_1_2izY --pass 2 --lb-bounds -105 -75 -20 20 --weatherfile $WEATHERFILE --endtime 06:04 --expand-footprint --optimize_ha
-python $NIGHTSTRAT 2018-02-25 $TILEFILE izY plan20180225_2_2izY --pass 2 --lb-bounds -60 -50 -20 20 --weatherfile $WEATHERFILE --time +06:04 --endtime +06:39 --expand-footprint --optimize_ha
-python $NIGHTSTRAT 2018-02-25 $TILEFILE gr plan20180225_3_1gr --pass 1 --lb-bounds -55 -42 -20 20 --weatherfile $WEATHERFILE --time +06:39 --expand-footprint --optimize_ha
-
-# 02-26
-python $NIGHTSTRAT 2018-02-26 $TILEFILE izY plan20180226_1_1izY --pass 1 --lb-bounds -113 -75 -20 20 --weatherfile $WEATHERFILE --endtime +07:43 --expand-footprint --optimize_ha
-python $NIGHTSTRAT 2018-02-26 $TILEFILE gr plan20180226_2_2gr --pass 2 --lb-bounds -55 -46 -20 20 --weatherfile $WEATHERFILE --time +07:43 --expand-footprint --optimize_ha
+#echo "25 February 2018"
+#echo "================"
+#python $NIGHTSTRAT 2018-02-25 $TILEFILE izY plan20180225_1_2izY --pass 2 --lb-bounds -105 -75 -20 20 --weatherfile $WEATHERFILE --endtime 06:04 --expand-footprint --optimize_ha
+#echo ""
+#python $NIGHTSTRAT 2018-02-25 $TILEFILE izY plan20180225_2_1izY --pass 1 --lb-bounds -70 -59 -20 20 --weatherfile $WEATHERFILE --time +06:04 --endtime +06:39 --expand-footprint --optimize_ha
+#echo ""
+#python $NIGHTSTRAT 2018-02-25 $TILEFILE gr plan20180225_3_1gr --pass 1 --lb-bounds -55 -42 -20 20 --weatherfile $WEATHERFILE --time +06:39 --endtime +09:07 --expand-footprint --optimize_ha
+#echo ""
+#python $NIGHTSTRAT 2018-02-25 $TILEFILE izY plan20180225_4_1izY --pass 1 --lb-bounds -54 -50 -00 20 --weatherfile $WEATHERFILE --time +09:07 --expand-footprint --optimize_ha
+#echo ""
+#
+## 02-26
+#echo "26 February 2018"
+#echo "================"
+#python $NIGHTSTRAT 2018-02-26 $TILEFILE izY plan20180226_1_1izY --pass 1 --lb-bounds -112.5 -75 -20 20 --weatherfile $WEATHERFILE --endtime +07:43 --expand-footprint --optimize_ha
+#echo ""
+#python $NIGHTSTRAT 2018-02-26 $TILEFILE gr plan20180226_2_2gr --pass 2 --lb-bounds -55 -46 -20 20 --weatherfile $WEATHERFILE --time +07:43 --endtime +09:09 --expand-footprint --optimize_ha
+#echo ""
+#python $NIGHTSTRAT 2018-02-26 $TILEFILE izY plan20180226_3_2izY --pass 2 --lb-bounds -54 -48 -00 20 --weatherfile $WEATHERFILE --time +09:09 --expand-footprint --optimize_ha
+#echo ""
 
 # 02-27
-python $NIGHTSTRAT 2018-02-27 $TILEFILE izY plan20180227_1_3izY --pass 3 --lb-bounds -105 -60 -20 20 --weatherfile $WEATHERFILE --endtime +08:50 --expand-footprint --optimize_ha
-python $NIGHTSTRAT 2018-02-27 $TILEFILE gr plan20180227_3_3gr --pass 3 --lb-bounds -55 -51 -20 20 --weatherfile $WEATHERFILE --time +08:50 --expand-footprint --optimize_ha # ~half of this time is after 12 degree twilight; we could forget about the blue bands if we wanted.
+echo "27 February 2018"
+echo "================"
+python $NIGHTSTRAT 2018-02-27 $TILEFILE izY plan20180227_1_3izY --pass 3 --lb-bounds -105 -60 -20 20 --weatherfile $WEATHERFILE --endtime +08:50 --expand-footprint --optimize_ha --chunk_size 30
+echo ""
+python $NIGHTSTRAT 2018-02-27 $TILEFILE gr plan20180227_2_3gr --pass 3 --lb-bounds -55 -51 -20 20 --weatherfile $WEATHERFILE --time +08:50 --endtime +09:10 --expand-footprint --optimize_ha --chunk_size 30
+echo ""
+python $NIGHTSTRAT 2018-02-27 $TILEFILE izY plan20180227_3_1izY --pass 1 --lb-bounds -59 -50 -20 00 --weatherfile $WEATHERFILE --time +09:10 --expand-footprint --optimize_ha --chunk_size 30
+echo ""
 
+echo "Plotting coverage ..."
 # Plot overall coverage
 for pass in {1..3}; do
     outFname=coverage_thru_2018-02-27_p${pass}.png
@@ -39,7 +59,7 @@ for pass in {1..3}; do
 done
 
 # Plot coverage on each night
-for day in {25..27}; do
+for day in {27..27}; do
     outFname=coverage_2018-02-${day}.png
     python $PLOTCOVERAGE $TILEFILE -o $outFname -p plan201802${day}_?_*.json --weather $WEATHERFILE --bad-exposures $BADEXP --decaps-extended-only
 done
