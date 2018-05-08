@@ -131,7 +131,7 @@ def main():
         data[filt+'_done'] = (
             data[filt+'_done'] & (badtiles[:, k] == 0))
     
-    print('\n'.join(textwrap.wrap(str(hdulist[1].header), 80)))
+    # print('\n'.join(textwrap.wrap(str(hdulist[1].header), 80)))
 
     n_decaps_tiles = np.sum(data['in_decaps'] == 1)
 
