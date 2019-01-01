@@ -32,9 +32,11 @@ def plot_circles(ax, x, y, radius, **kwargs):
     if not hasattr(radius, '__len__'):
         radius = np.full_like(x, radius)
 
-    for xx,yy,rr in zip(x,y,radius):
-        circle = patches.Circle((xx,yy), radius=rr, **kwargs)
-        ax.add_patch(circle)
+    plt.draw()
+    fig = plt.gcf()
+    vmin, vmax = ax.get_xlim()
+    s = (2*radius*ax.get_window_extent().width/(vmax-vmin) * 72./fig.dpi)**2
+    ax.scatter(x, y, s, **kwargs)
 
 
 def main():
@@ -142,6 +144,7 @@ def main():
     idx_planned = np.zeros((len(data),n_bands), dtype='bool')
     idx_observed = np.empty((len(data),n_bands), dtype='bool')
     pct_observed = np.empty(len(bands), dtype='f8')
+    pct_planned = np.empty(len(bands), dtype='f8')
 
     if args.pass_num:
         for p in args.pass_num:
@@ -168,7 +171,8 @@ def main():
         idx_planned[k_insert[idx_match],i] = 1
 
         pct_observed[i] = 100. * np.count_nonzero(idx_observed[:,i] & idx_footprint) / np.count_nonzero(idx_footprint)
-        print('{}: {:.1f}% observed'.format(b, pct_observed[i]))
+        pct_planned[i] = 100. * np.count_nonzero(idx_planned[:,i] & idx_footprint) / np.count_nonzero(idx_footprint)
+        print('{}: {:.1f}% observed before, {:.1f}% observed after'.format(b, pct_observed[i], pct_observed[i]+pct_planned[i]))
 
     coords = SkyCoord(
         data['ra'],
@@ -198,6 +202,8 @@ def main():
     # Plot each band
     for i,b in enumerate(bands):
         ax = fig.add_subplot(n_bands,1,1+i)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
 
         # Plot unobserved pointings
         idx = idx_footprint & (~idx_observed[:,i])
@@ -232,8 +238,6 @@ def main():
             facecolor='green',
             alpha=0.75*alpha_obs)
 
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
         ax.set_ylabel(r'${}$'.format(b), fontsize=22, rotation=0, labelpad=15)
 
     if args.pass_num:

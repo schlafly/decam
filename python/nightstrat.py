@@ -293,14 +293,14 @@ def WriteJSON(pl, fname, chunks=1, chunk_size=None, propid=None):
 
 
 def gen_decam_json(ra, dec, filters, obj_name, fname, dither=False,
-                   propid=None):
+                   propid=None, exptime=30):
     exposures = []
 
     if dither:
-        dither_scale = 0.262 * 4096 / 3600.
-        d_ra = (np.array([0.0, -0.5, 0.5]) * dither_scale /
+        dither_scale = 3 / 60.  # 3 arcminutes
+        d_ra = (np.array([0.0, -1, 1]) * dither_scale /
                 np.cos(np.radians(dec)))
-        d_dec = np.array([0.5, -0.5, -0.5]) * 0.5 * dither_scale
+        d_dec = np.array([0., -1, 1]) * dither_scale
     else:
         d_ra = [0.]
         d_dec = [0.]
@@ -310,7 +310,7 @@ def gen_decam_json(ra, dec, filters, obj_name, fname, dither=False,
             texp = {
                 'expType': 'object',
                 'object': 'DECaPS_{:s}_{:s}'.format(obj_name, filt),
-                'expTime': 30.,
+                'expTime': exptime,
                 'filter': filt,
                 'RA': np.mod(ra+da, 360.),
                 'dec': dec+dd
@@ -363,7 +363,8 @@ def extend_footprint_to_matches(tileids, infootprint):
 
 def readTilesTable(filename, expand_footprint=False, rdbounds=None,
                    lbbounds=None, skypass=-1, skypassfilt=[],
-                   weatherfile=None, filters='', exclude_nominal=False):
+                   weatherfile=None, filters='', exclude_nominal=False,
+                   assumeplans=None):
     tiles_in = fits.getdata(filename, 1)
 
     if weatherfile:
@@ -373,6 +374,26 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
 	for filt, ind in zip('grizy', range(5)):
             tiles_in[filt+'_done'] = (
                 tiles_in[filt+'_done'] & (badtiles[:, ind] == 0))
+
+    if assumeplans:
+        import os
+        plandircontents = os.listdir(assumeplans)
+        nassume = 0
+        for planfn in plandircontents:
+            if planfn[-4:].lower() != 'json':
+                continue
+            nassume += 1
+            import json
+            plan = json.load(open(planfn, 'r'))
+            for obs in plan:
+                ttileid = int(obs['object'].split('_')[1])
+                m = tiles_in['tileid'] == ttileid
+                filt = obs['filter'].encode('utf-8')
+                if ~np.any(m):
+                    pdb.set_trace()
+                tiles_in['%s_done' % filt][m] = 1
+        if nassume != 0:
+            print('Assuming %d plans were already completed.' % nassume)
 
     tiles = OrderedDict()
     # Check that required columns exist
@@ -736,7 +757,8 @@ def plot_plan(plan, date, survey_centers=None, filename=None):
     
     print(date)
     print('{} 12:00:00'.format(str(date).replace('-', '/')))
-    time_dict = night_times('{} 12:00:00'.format(str(date).replace('-', '/')))
+    time_dict = night_times('{} 12:00:00'.format(str(date).replace('-', '/')),
+                            verbose=False)
     
     # Exposures in (RA,Dec) and (l,b)
     for i, lb in enumerate([False, True]):
@@ -916,6 +938,7 @@ def main():
                         help='Exposure times for filters', default=[])
     parser.add_argument('--propid', type=str, help='propid for observations',
                         default=None)
+    parser.add_argument('--assumeplans', type=str, help='directory including plans assumed to complete before this one', default=None)
 
     args = parser.parse_args()
     if len(args.exptimes) > 0:
@@ -934,7 +957,8 @@ def main():
         skypass=args.skypass,
         skypassfilt=args.skypassfilt,
         weatherfile=args.weatherfile,
-        filters=args.filters
+        filters=args.filters,
+        assumeplans=args.assumeplans
     )
 
     def set_obs_time(obs, start_date, time):
