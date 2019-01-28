@@ -148,7 +148,11 @@ def process(file, tdata, minexptime=25):
         tileid = 0
     else:
         if (obj3[0] == 'DECaPS') and (len(obj3) == 3):
-            tileid = int(obj3[1])
+            try:
+                tileid = int(obj3[1])
+            except:
+                tileid = 0
+                print(hdr['OBJECT'])
         else:
             dd = gc_dist(tdata['ra'], tdata['dec'], ra, dec)
             imin = numpy.argmin(dd)
@@ -170,9 +174,10 @@ def process(file, tdata, minexptime=25):
         print('Invalid filter %s' % filt)
         return
     if tdata[filt+'_mjd_obs'][ind] >= mjd_obs-1./24./60./60.:
-        print('Ignoring TILEID=%d FILTER=%s MJD=%f; older than existing tile.'
-              % (tileid, filt, mjd_obs))
-        print(mjd_obs, tdata[filt+'_mjd_obs'][ind])
+        # print('Ignoring TILEID=%d FILTER=%s MJD=%f; older than existing tile.'
+        #       % (tileid, filt, mjd_obs))
+        # print(mjd_obs, tdata[filt+'_mjd_obs'][ind])
+        pass
     else:
         print('Adding TILEID=%d FILTER=%s MJD=%f' % (tileid, filt, mjd_obs))
         tdata[filt+'_done'][ind] = 1
