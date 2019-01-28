@@ -43,3 +43,6 @@
 
 # system in safe mode
 726581
+
+# chicken sound
+812926

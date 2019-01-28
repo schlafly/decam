@@ -1,0 +1,27 @@
+# Observing log for 2019-01-09
+# 2nd half of the night
+# DECaPS survey on DECam
+# Gregory Green
+#
+# Plan for tonight is to observe pass 1 in gr for most of the night,
+# and to switch to izY in twilight. For calibration, we're planning
+# on observing the DES SN C1 field at the beginning, and a field in
+# the Galactic plane at the end of the night.
+
+Log
+===
+* Some clouds low on the horizon at sunset, and also at the midpoint,
+  when we take over. Rasicam looks good at the midpoint in the night.
+  Took calibrations (DES SN C1 field).
+* Rasicam still showing no clouds 3/4 of the way through the night.
+  The webcam still shows some clouds low on the horizon, but
+  telescope is pointing ~65 deg above the horizon.
+* No clouds visible at end of night. The last few science exposures
+  were taken near 10-deg twilight. No time for calibrations at
+  end of night.
+
+Summary
+=======
+Probably photometric night, with seeing between 0.8" and 1.4".
+Completed all planned science exposures, and took calibration
+exposures at the beginning of observations.

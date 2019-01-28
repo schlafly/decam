@@ -1,0 +1,38 @@
+# Observing log for 2019-01-16
+# 2nd half of the night
+# DECaPS survey on DECam
+# Ioana Zelko
+# 
+#
+# Plan for tonight is to observe pass 2 in izy while the Moon is up, then switch to pass 2 gr for most of the night, then again switch to pass 2 izY in twilight. For calibration, we're planning
+# on observing the DES SN C1 field at the beginning, and DECaPS1 for the end
+
+Log
+===
+
+First exposure of the night: 812891
+Last exposure of the night:  813096
+
+
+Object skipped after the "chicken" sound
+Skipped tile  - 30253_i  -exposure 812926
+
+* Took calibrations (DES SN C1 field) for all wavelengths.
+* Sky looks completely clear on Rasicam at all points in
+  the night. Took calibrations (DES SN C1 field) for all wavelengths.
+* No time for last 6 exposures; got g,r,i calibration exposures in ending twilight.
+
+
+* Seeing was good (0.8-1.0) during the third quarter. It went up to 0.9-1.2 in the 4th quarter.
+
+Summary
+=======
+
+Photometric night. Seeing was good (0.8-1.0) during the third quarter. It went up to 0.9-1.2 in the 4th quarter. Got calibrations at beginning and ending of observations (at the end got only g,r,i calibrations - over compensated for the short slew yesterday). No time to complete last 6 planned exposures.
+
+
+
+
+
+
+

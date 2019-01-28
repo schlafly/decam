@@ -1,0 +1,23 @@
+# Observing log for 2019-01-10
+# 2nd half of the night
+# DECaPS survey on DECam
+# Gregory Green
+#
+# Plan for tonight is to observe pass 2 in gr for most of the night,
+# and to switch to izY in twilight. For calibration, we're planning
+# on observing the DES SN C1 field at the beginning.
+
+Log
+===
+* Sky looks completely clear on webcam and Rasicam at midpoint in
+  the night. Took calibrations (DES SN C1 field).
+* Sky appeared clear during entire night.
+* No time for last 3 exposures, or for calibration exposures in
+  twilight. Beginning calibration and long slew before each plan ate
+  up about 15 minutes of time.
+
+Summary
+=======
+Photometric night, with seeing rising slowly from 1" to 1.4"
+through 2nd half of night. Got calibrations at beginning of
+observations. No time to complete last 3 planned exposures.

@@ -1,0 +1,26 @@
+# Observing log for 2019-01-11
+# 2nd half of the night
+# DECaPS survey on DECam
+# Gregory Green and Ioana Zelko
+# 
+#
+# Plan for tonight is to observe pass 2 in gr for most of the night,
+# and to switch to izY in twilight. For calibration, we're planning
+# on observing the DES SN C1 field at the beginning, and DECaPS1 for
+# the end
+
+Log
+===
+* Sky looks completely clear on webcam and Rasicam at midpoint in
+  the night. Took calibrations (DES SN C1 field).
+* Sky appeared clear during entire night.
+* No time for last 10 exposures; Finished all calibration exposures in
+  twilight. 
+* Seeing was oscillating alot: the 3rd quarter: average 1.2 +- 0.2 
+	4th quarter: 1.5 +- 0.3
+* UTC 5.01 g band – seeing 1.7
+
+Summary
+=======
+Photometric night, but inconsistent seeing. Got calibrations at beginning and ending of
+observations. No time to complete last 10 planned exposures.
