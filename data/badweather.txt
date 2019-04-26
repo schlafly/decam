@@ -91,6 +91,9 @@ start, end, type
 #
 
 # Feb 2-3
+# RASICAM: very uniform but high on both of these nights.
+# growing variance at end of each night.
+# could extend back 30 min. on first night, one hour on second night.
 2018-02-03T07:25:00, 2018-02-03T12:00:00, bad
 #2018-02-04T08:15:00, 2018-02-04T09:15:00, marginal
 2018-02-04T09:15:00, 2018-02-04T12:00:00, bad
@@ -122,4 +125,19 @@ start, end, type
 2018-08-02T23:40:00, 2018-08-03T00:10:00, marginal
 2018-08-03T00:10:00, 2018-08-03T05:00:00, bad
 2018-08-04T22:55:00, 2018-08-05T00:45:00, bad
-2018-08-05T02:30:00, 2018-08-05T02:50:00, bad 
+# RASICAM: extend half an hour later?
+2018-08-05T02:30:00, 2018-08-05T02:50:00, bad
+# RASICAM: extend on both sides by 15 min.
+
+# Jan 2019
+2019-01-14T6:00:00, 2019-01-14T15:00:00, bad
+
+# 2019-01-14T6:10:00, 2019-01-14T6:14:00, marginal
+# 2019-01-14T6:14:00, 2019-01-14T7:30:00, bad
+# 2019-01-14T7:30:00, 2019-01-14T7:55:00, marginal
+# 2019-01-14T7:55:00, 2019-01-14T9:05:00, bad
+
+# RASICAM doesn't like 2019-01-31T12:00:00, 2019-02-01T12:00:00
+
+# Apr/May 2019
+2019-04-25T15:00:00, 2019-04-26T06:00:00, bad
