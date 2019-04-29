@@ -371,7 +371,7 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
         import badweather
         badtiles = badweather.check_bad(tiles_in, weatherfile)
         badtiles = badtiles | badweather.check_badexp(tiles_in)
-	for filt, ind in zip('grizy', range(5)):
+        for filt, ind in zip('grizy', range(5)):
             tiles_in[filt+'_done'] = (
                 tiles_in[filt+'_done'] & (badtiles[:, ind] == 0))
 
@@ -383,7 +383,6 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
             if planfn[-4:].lower() != 'json':
                 continue
             nassume += 1
-            import json
             plan = json.load(open(planfn, 'r'))
             for obs in plan:
                 ttileid = int(obs['object'].split('_')[1])
