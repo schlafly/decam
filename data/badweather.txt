@@ -142,4 +142,6 @@ start, end, type
 # Apr/May 2019
 2019-04-25T15:00:00, 2019-04-26T06:00:00, bad
 # 2019-04-29T08:00:00, 2019-04-29T15:00:00, bad
-# not clear how bad this time is; add back if necessary.  2.5 hr, bright time, GC.
+# not clear how bad this time is (thin cirrus); add back if necessary.  2.5 hr, bright time, GC.
+2019-04-29T15:00:00, 2019-04-30T15:00:00, bad
+
