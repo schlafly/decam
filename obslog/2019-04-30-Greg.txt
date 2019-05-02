@@ -1,0 +1,43 @@
+# Observing log for 2019-04-30
+# Full night
+# DECaPS survey on DECam
+# Gregory Green
+#
+# Plan for tonight is to finish up gr on the extended footprint, to
+# then fill in some of the holes in gr in the main footprint by
+# redoing pass 3 near the Galactic Center with a corrected dither,
+# then to do the same with a few izY tiles, and then to observe
+# pass 3 of izY. There will be calibrations at the start and end of
+# the night. The extra dither near the GC will serve as calibration
+# in the middle of the night.
+
+Log
+===
+* Clear skies at the start of the night. The Norwegians predict a
+  cloudless night.
+* Took calibrations in grizY during twilight.
+* Seeing of first science observations is ~1.6" (similar to DIMM).
+* At 02:15 UT, the sky is still clear, and seeing is around 1.5".
+* At 02:45 UT, the sky is still clear, and seeing has decreased
+  to ~1.1".
+* At 03:45 UT, the sky is still clear, but seeing has returned
+  to ~1.5".
+* At 06:15 UT, the sky is still clear, and seeing is ~1.1".
+* At 07:00 UT, the sky is still clear, and seeing is ~1.25".
+* At 07:30 UT, the sky is still clear, but seeing has returned
+  to ~1.8".
+* At 08:15 UT, after moonrise, the sky is still clear, and
+  seeing has fallen to ~1".
+* At 09:00 UT, the sky is still clear, and seeing is ~1.25".
+* Had to remove about two dozen exposures from the queue in order
+  to catch up to the schedule.
+* grizY calibrations in the morning. One long cloud visible, but
+  possibly only condensation trails.
+
+Summary
+=======
+
+Photometric night with poor seeing (~1.25-1.6" for most of the
+night). No clouds visible on rasicam or on the webcams during
+the night, but one long cloud visible during twilight. Not
+sure if the end-of-night calibrations are okay.

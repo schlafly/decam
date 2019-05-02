@@ -1,0 +1,51 @@
+# Observing log for 2019-05-01
+# Full night
+# DECaPS survey on DECam
+# Gregory Green
+#
+# Plan for tonight is to observe mostly in izY, and to redo gr
+# pass 3 in some of the region near the Galactic Center where
+# the previous dither pattern left unobserved strips. A very
+# small number of pass 3 pointings in izY near the GC will also
+# be done. There will be calibrations at the start and end of
+# the night. The extra dither near the GC will serve as
+# calibration in the middle of the night.
+
+Log
+===
+* Some cirrus during evening twilight calibrations.
+* Cirrus appears to gone not long after twilight on RASICAM.
+* 3:00 UT: Clouds on horizon (RASICAM, webcam), DIMM flux
+  fluctuating a bit.
+* 3:45 UT: More heavy clouds on horizon.
+* 4:25 UT: Some light blue haze on RASICAM passing over our
+  pointing.
+* 4:45 UT: Clouds gone from RASICAM.
+* 5:30 UT: Some clouds on horizon again, a bit off from our
+  pointing.
+* 6:00 UT: Sky completely clear in RASICAM.
+* 7:00 UT: Maybe one whisp, a bit away from where we're
+  observing.
+* 7:09 UT: Whisp gone.
+* 7:30 UT: Still clear.
+* 8:20 UT: Still clear.
+* 8:50 UT: Some light clouds on horizon, but we're observing
+  near zenith.
+* 9:20 UT: Completely clear.
+* Deleted ~25 pointings from ~beginning of last izY plan
+  file in order to catch up to schedule.
+* Some clouds near horizon, away from our pointing.
+* During twilight, some cirrus visible near the horizon, but
+  away from our science fields.
+* Oil pump failed right as we were about to do morning
+  twilight calibrations. No calibrations.
+
+Summary
+=======
+
+Most of the night was photometric, with some light clouds
+appearing at times, mostly on the horizon, away from where we
+were observing. The seeing was remarkably stable at ~1".
+Calibrations at start of night are questionable, due to
+cirrus. Could not do end-of-night calibrations due to
+mechanical problem.
