@@ -383,7 +383,7 @@ def readTilesTable(filename, expand_footprint=False, rdbounds=None,
             if planfn[-4:].lower() != 'json':
                 continue
             nassume += 1
-            plan = json.load(open(planfn, 'r'))
+            plan = json.load(open(os.path.join(assumeplans, planfn), 'r'))
             for obs in plan:
                 ttileid = int(obs['object'].split('_')[1])
                 m = tiles_in['tileid'] == ttileid
