@@ -1,0 +1,43 @@
+# Observing log for 2019-07-17
+# First half night
+# DECaPS survey on DECam
+# Gregory Green
+#
+
+Plan tonight is to observe most of the tiles that don't yet have a photometric
+observation. This will leave ~40 minutes free at the end of the night, during
+which time we will observe a few fields in the DES footprint. At the beginning
+of the night, we plan to take calibration exposures at b = 0 deg, in order to
+better tie into the original survey.
+
+Log
+===
+* Cirrocumulus clouds blanketing the sky at twilight. Taking calibration
+  exposures at (l,b)=(300,0), but not hopeful about their photometricity.
+* At 23:20 UT, clouds seem to be getting even worse. Cirrocumulus blanketing
+  the sky, with cumulus clouds near the horizon.
+* At 23:30 UT, clouds definitely worse. Looks like cumulus clouds across the
+  entire sky. The DIMM seeing and flux are not stable.
+* Stopped observing at 23:50 UT, because the sky was completely covered by
+  cumulus clouds. Will be keeping an eye on the sky in order to see if
+  conditions improve. Dome is being closed.
+* Dome has been reopened. Restarted at 00:35 UT. Deleted observations from
+  queue to catch up to schedule. The half of the sky that we're observing in
+  has fewer clouds. The other half is still covered by high clouds. Our first
+  pointing, however, is directly on top of a cloud.
+* At 00:55 UT, the sky is looking much better. Clouds gone from most of the
+  sky.
+* Sky still looking clear at 01:25 UT.
+* Sky still clear at 02:40 UT.
+* Sky still clear at 03:14 UT.
+* Sky still clear at 03:35 UT. PSF down to ~0.8".
+* Observed at b = 0 with clear skies. Moved on to fields in DES footprint.
+* A bit of cirrus in the last ~5 minutes. Not sure if it passed over
+  our pointings.
+
+
+Summary
+=======
+Everything up to 00:45 UT is bad. After that, the weather was good. The PSF
+was ~0.8"-1.2" throughout our half night. Got DES fields at end of our
+half night. Marginal weather in the last 5 minutes of our observations.
