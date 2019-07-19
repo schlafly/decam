@@ -1,0 +1,40 @@
+# Observing log for 2019-07-18
+# First half night
+# DECaPS survey on DECam
+# Gregory Green
+#
+
+Plan tonight is to first observe the tiles from last night that were marred by
+clouds. After that, we will observe the dither tiles near the Galactic Center,
+fixing the dither pattern from previous observations. Time permitting, we will
+finish up by observing the same DES calibration fields as last night.
+
+Log
+===
+* Clear skies at sunset and start of observations.
+* Began by observing (l,b) = (290, 0) at twilight, in order to tie into
+  original survey footprint.
+* Moved on to science fields on time. PSF is not good: ~1.6-2.5".
+* At 23:30 UT, sky still clear, but PSF still poor: ~2".
+* At 00:00 UT, sky still clear, and PSF has improved somewhat: ~1.5".
+* At 00:30 UT, sky still clear, and PSF still ~1.5".
+* At 01:23 UT, sky still clear, and PSF trending downwards: ~1.1-1.2".
+* At 01:25 UT, moved on to fixing dither in original footprint near GC. The
+  PSF is suddenly much worse (1.5-2.5"), possibly due to the wind picking up.
+* At 02:00 UT, sky still clear, and PSF back down to ~1.1".
+* At 02:36 UT, sky still clear, and PSF around 1.5".
+* At 03:23 UT, sky still clear, and PSF around 1.5".
+* At 03:52 UT, sky still clear, and PSF still around 1.5".
+* Observed extra dither plan ("plan20190718-2") through tile DECaPS_43853_Y,
+  and then switched to calibration fields in DES.
+* Observed 3 of the DES calibration fields, aided by the kind donation of a few
+  minutes from Alfredo.
+* Still no clouds at the midpoint of the night. PSF still ~1.5".
+
+Summary
+=======
+Clear skies throughout, but poor seeing, with the PSF bouncing around between
+1.1" and 2.5", but close to 1.5" for the majority of the night. Observed
+almost all the planned fields, but had to cut off the end of the extra dither
+in order to make time for the pointings in the DES footprint (this was
+foreseen). Should pick up "plan20190718-2" at tile 43911 next time.
