@@ -1,6 +1,6 @@
 cycler==0.10.0
 matplotlib==1.5.1
-numpy==1.10.4
+numpy==1.21.0
 pyephem==3.7.6.0
 pyfits==3.4
 pyparsing==2.1.0
